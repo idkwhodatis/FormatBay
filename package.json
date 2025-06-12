@@ -1,0 +1,13 @@
+{
+  "name": "formatbay",
+  "author": "idkwhodatis",
+  "main": "src/main.js",
+  "type": "commonjs",
+  "private": true,
+  "scripts": {
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^36.4.0"
+  }
+}
