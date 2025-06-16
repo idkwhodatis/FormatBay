@@ -2,12 +2,15 @@
   "name": "formatbay",
   "author": "idkwhodatis",
   "main": "src/main.js",
-  "type": "commonjs",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "electron ."
   },
   "devDependencies": {
     "electron": "^36.4.0"
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0"
   }
 }

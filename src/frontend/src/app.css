@@ -119,3 +119,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom */
+html,body{
+  user-select:none;
+  overflow:hidden;
+}
+
+vite-error-overlay,
+vite-error-overlay * {
+  user-select: text !important;
+}
+
+body::-webkit-scrollbar{
+  display:none;
+}
