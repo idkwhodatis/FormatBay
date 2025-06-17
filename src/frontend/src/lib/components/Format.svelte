@@ -7,15 +7,9 @@
   let {type,format,showInFav=false}=$props();
   let faved=$derived(store.favorite[type][format])
 
-  function toggleFav(){
+  async function toggleFav(){
     store.favorite[type][format]=!store.favorite[type][format];
-    console.log(faved);
-    const favedFormat=Object.entries(store.favorite).flatMap(([type,formats])=>
-      Object.entries(formats)
-        .filter(([,val])=>val===true)
-        .map(([format])=>[type,format])
-    );
-    console.log(favedFormat)
+    await window.store.set("favorite",$state.snapshot(store.favorite));
   }
 </script>
 

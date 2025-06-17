@@ -27,15 +27,6 @@
     }
     store.init=true;
   });
-
-  let mounted=false;
-  $effect(async ()=>{
-    if(!mounted){
-      mounted=true;
-      return;
-    }
-    await window.store.set("favorite",$state.snapshot(store.favorite));
-  });
 </script>
 
 <main>
