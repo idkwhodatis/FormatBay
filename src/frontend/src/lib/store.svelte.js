@@ -1,5 +1,6 @@
 const store=$state({
-    favorite:[]
+    init:false,
+    favorite:[],
 });
 export default store;
 

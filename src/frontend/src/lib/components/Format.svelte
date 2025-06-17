@@ -5,11 +5,17 @@
   import store from "$lib/store.svelte.js"
 
   let {type,format,showInFav=false}=$props();
-  let faved=$derived(store.favorite)
+  let faved=$derived(store.favorite[type][format])
 
-  function favorite(){
-    console.log(type);
-    console.log(format);
+  function toggleFav(){
+    store.favorite[type][format]=!store.favorite[type][format];
+    console.log(faved);
+    const favedFormat=Object.entries(store.favorite).flatMap(([type,formats])=>
+      Object.entries(formats)
+        .filter(([,val])=>val===true)
+        .map(([format])=>[type,format])
+    );
+    console.log(favedFormat)
   }
 </script>
 
@@ -19,7 +25,7 @@
   {/if}
   .{format}
 
-  <Button onclick={favorite} size="icon" variant="ghost" class="absolute top-1 right-1 h-6 w-6 p-0">
-    <Star class="h-4 w-4"/>
+  <Button onclick={toggleFav} size="icon" variant="ghost" class="absolute top-1 right-1 h-6 w-6 p-0">
+    <Star fill={faved?"primary":"none"} class="h-4 w-4"/>
   </Button>
 </div>
