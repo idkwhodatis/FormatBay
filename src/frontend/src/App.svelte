@@ -4,6 +4,8 @@
   import Topbar from "$lib/components/Topbar.svelte";
   import Formats from "$lib/views/Formats.svelte";
   import Loader2Icon from "@lucide/svelte/icons/loader-2";
+  import "$lib/localization/i18n.js";
+  import {_} from 'svelte-i18n'
 
   import {onMount} from "svelte";
   import "$lib/store.svelte.js"
@@ -38,8 +40,8 @@
         <div class="h-full w-1/3 border-r border-gray-300">
           <Tabs.Root value="formats" class="h-full w-full">
             <Tabs.List class="w-full">
-              <Tabs.Trigger value="formats" class="rounded-sm transition-colors data-[state=active]:text-secondary data-[state=active]:bg-primary">Formats</Tabs.Trigger>
-              <Tabs.Trigger value="tasks" class="rounded-sm transition-colors data-[state=active]:text-secondary data-[state=active]:bg-primary">Tasks</Tabs.Trigger>
+              <Tabs.Trigger value="formats" class="rounded-sm transition-colors data-[state=active]:text-secondary data-[state=active]:bg-primary">{$_("left.formats.title")}</Tabs.Trigger>
+              <Tabs.Trigger value="tasks" class="rounded-sm transition-colors data-[state=active]:text-secondary data-[state=active]:bg-primary">{$_("left.tasks.title")}</Tabs.Trigger>
             </Tabs.List>
             <Tabs.Content value="formats" class="h-full p-3 pt-0 pr-0">
               <Formats/>

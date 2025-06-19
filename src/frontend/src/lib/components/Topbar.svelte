@@ -3,12 +3,13 @@
   import {Button,buttonVariants} from "$lib/components/ui/button/index.js";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import {Minus,Square,X} from "@lucide/svelte";
+  import {_} from 'svelte-i18n'
 </script>
  
 <Menubar.Root class="rounded-none" style="margin-right:0;padding-right:0;-webkit-app-region:drag;">
   <div class="flex no-drag">
     <Menubar.Menu>
-      <Menubar.Trigger>File</Menubar.Trigger>
+      <Menubar.Trigger>{$_("topbar.file.title")}</Menubar.Trigger>
       <Menubar.Content>
         <Menubar.Item>
           New Tab
@@ -22,7 +23,7 @@
       </Menubar.Content>
     </Menubar.Menu>
     <Menubar.Menu>
-      <Menubar.Trigger>Edit</Menubar.Trigger>
+      <Menubar.Trigger>{$_("topbar.edit.title")}</Menubar.Trigger>
       <Menubar.Content>
         <Menubar.Item>
           Edit
@@ -36,7 +37,7 @@
       </Menubar.Content>
     </Menubar.Menu>
     <Menubar.Menu>
-      <Menubar.Trigger>View</Menubar.Trigger>
+      <Menubar.Trigger>{$_("topbar.view.title")}</Menubar.Trigger>
       <Menubar.Content>
         <Menubar.Item>
           Edit
@@ -50,7 +51,7 @@
       </Menubar.Content>
     </Menubar.Menu>
     <Menubar.Menu>
-      <Menubar.Trigger>Settings</Menubar.Trigger>
+      <Menubar.Trigger>{$_("topbar.settings.title")}</Menubar.Trigger>
       <Menubar.Content>
         <Menubar.Item>
           Edit
@@ -64,7 +65,7 @@
       </Menubar.Content>
     </Menubar.Menu>
     <Menubar.Menu>
-      <Menubar.Trigger>About</Menubar.Trigger>
+      <Menubar.Trigger>{$_("topbar.about.title")}</Menubar.Trigger>
       <Menubar.Content>
         <Menubar.Item>
           Edit
@@ -88,7 +89,7 @@
           </Button>
         </Tooltip.Trigger>
         <Tooltip.Content>
-          <p>Minimize</p>
+          <p>{$_("topbar.minimize.tooltip")}</p>
         </Tooltip.Content>
       </Tooltip.Root>
     </Tooltip.Provider>
@@ -100,7 +101,7 @@
           </Button>
         </Tooltip.Trigger>
         <Tooltip.Content>
-          <p>Close</p>
+          <p>{$_("topbar.close.tooltip")}</p>
         </Tooltip.Content>
       </Tooltip.Root>
     </Tooltip.Provider>
