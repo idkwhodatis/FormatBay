@@ -14,7 +14,7 @@
   }
 </script>
 
-<div class="relative rounded-lg shadow-sm bg-white w-28 h-22 flex items-center justify-center border hover:bg-gray-200">
+<button class="relative rounded-lg shadow-sm bg-white w-28 h-22 flex items-center justify-center border hover:bg-gray-200 active:bg-gray-300">
   {#if showInFav}
     <div class="absolute top-2 left-2 text-base italic">{$_("left.formats."+type.toLowerCase()+".title")}</div>
   {/if}
@@ -23,4 +23,4 @@
   <Button onclick={toggleFav} size="icon" variant="ghost" class="absolute top-1 right-1 h-6 w-6 p-0">
     <Star fill={faved?"primary":"none"} class="h-4 w-4"/>
   </Button>
-</div>
+</button>

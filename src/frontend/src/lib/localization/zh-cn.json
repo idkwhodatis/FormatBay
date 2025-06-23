@@ -15,6 +15,9 @@
         "about":{
             "title":"关于"
         },
+        "outputfolder":{
+            "tooltip":"输出文件夹"
+        },
         "minimize":{
             "tooltip":"最小化"
         },
@@ -48,7 +51,31 @@
             }
         },
         "tasks":{
-            "title":"队列"
+            "title":"队列",
+            "add":{
+                "tooltip":"添加文件"
+            },
+            "addfolder":{
+                "tooltip":"添加文件夹"
+            },
+            "start":{
+                "tooltip":"开始选择项"
+            },
+            "stop":{
+                "tooltip":"停止选择项"
+            },
+            "delete":{
+                "tooltip":"删除选择项"
+            },
+            "startall":{
+                "tooltip":"开始所有"
+            },
+            "stopall":{
+                "tooltip":"停止所有"
+            }
         }
+    },
+    "right":{
+        "hint":"选择一种输出格式来开始"
     }
 }

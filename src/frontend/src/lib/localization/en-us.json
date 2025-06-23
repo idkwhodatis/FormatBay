@@ -15,6 +15,9 @@
         "about":{
             "title":"About"
         },
+        "outputfolder":{
+            "tooltip":"Output Folder"
+        },
         "minimize":{
             "tooltip":"Minimize"
         },
@@ -48,7 +51,31 @@
             }
         },
         "tasks":{
-            "title":"Tasks"
+            "title":"Tasks",
+            "add":{
+                "tooltip":"Add File"
+            },
+            "addfolder":{
+                "tooltip":"Add Folder"
+            },
+            "start":{
+                "tooltip":"Start Selection"
+            },
+            "stop":{
+                "tooltip":"Stop Selection"
+            },
+            "delete":{
+                "tooltip":"Delete Selection"
+            },
+            "startall":{
+                "tooltip":"Start All"
+            },
+            "stopall":{
+                "tooltip":"Stop All"
+            }
         }
+    },
+    "right":{
+        "hint":"Select An Output Format To Get Started"
     }
 }

@@ -1,3 +1,5 @@
 video: mp4, mkv, avi
 audio: mp3, flac, wav
 text: word, pdf, md, xlsx, csv
+subtitle: srt
+unicode/ascii/base64

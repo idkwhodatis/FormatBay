@@ -7,8 +7,8 @@ This project is working in progress, for latest update note please check [releas
 ## Roadmap
 | Feature              | Status        |
 |----------------------|----------------|
-| Basic Layout         | ⬜ In-Progress  |
-| Video Conversion     | ⬜ Planned  |
+| Basic Layout         | ✅ Done  |
+| Video Conversion     | 🔄 In-Progress  |
 | Audio Conversion     | ⬜ Planned  |
 | OCR Integration      | ⬜ Planned  |
 | Structured Data Formats     | ⬜ Planned  |

@@ -2,7 +2,7 @@
   import * as Menubar from "$lib/components/ui/menubar/index.js";
   import {Button,buttonVariants} from "$lib/components/ui/button/index.js";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-  import {Minus,Square,X} from "@lucide/svelte";
+  import {Minus,Square,X,FolderCode} from "@lucide/svelte";
   import {_} from 'svelte-i18n'
 </script>
  
@@ -80,11 +80,17 @@
     </Menubar.Menu>
   </div>
 
+  <div class="flex no-drag">
+    <Button variant="ghost" class="rounded-none active:bg-gray-200">
+      <FolderCode/>{$_("topbar.outputfolder.tooltip")}
+    </Button>
+  </div>
+
   <div class="ml-auto flex no-drag">
     <Tooltip.Provider>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          <Button onclick={window.electronAPI.minimizeApp} size="icon" variant="ghost" class="rounded-none">
+          <Button onclick={window.electronAPI.minimizeApp} size="icon" variant="ghost" class="rounded-none active:bg-gray-200">
             <Minus/>
           </Button>
         </Tooltip.Trigger>
@@ -96,7 +102,7 @@
     <Tooltip.Provider>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          <Button onclick={window.electronAPI.closeApp} size="icon" variant="ghost" class="rounded-none">
+          <Button onclick={window.electronAPI.closeApp} size="icon" variant="ghost" class="rounded-none active:bg-gray-200">
             <X/>
           </Button>
         </Tooltip.Trigger>
