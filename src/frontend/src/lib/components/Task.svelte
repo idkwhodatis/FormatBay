@@ -1,7 +1,7 @@
 <script>
 import {Play,ListEnd,Pause,Check} from "@lucide/svelte";
 import {Progress} from "$lib/components/ui/progress/index.js";
-import {cn} from "$lib/utils.js"
+import {cn,truncatePath} from "$lib/utils.js"
 import {_} from 'svelte-i18n'
 
 import store from "$lib/store.svelte.js"
@@ -36,8 +36,11 @@ function selectTask(){
     <Status/>
     {task.title}
   </div>
-  <div class="flex flex-row pl-2">
-    {$_("left.formats."+task.type.toLowerCase()+".title")}.{task.format}
+  <div class="flex flex-row pl-2 pr-2">
+    {truncatePath(task.path)}
+    <div class="ml-auto flex">
+      {$_("left.formats."+task.type.toLowerCase()+".title")}.{task.format}
+    </div>
   </div>
   {#if task.status==="started"}
     <div class="p-2">

@@ -1,6 +1,9 @@
 <script>
   import "./app.css";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
+  import {Button} from "$lib/components/ui/button/index.js";
+  import {Separator} from "$lib/components/ui/separator/index.js";
+  import {X} from "@lucide/svelte";
   import Loader2Icon from "@lucide/svelte/icons/loader-2";
   import "$lib/localization/i18n.js";
   import {_} from 'svelte-i18n'
@@ -26,8 +29,11 @@
     await window.store.set("favorite",favorite);
     store.favorite=favorite;
 
-    locale.set("zh-cn");
-    // locale.set("en-us");
+    const storedOfflineMode=await window.store.get("offlineMode") ?? true;
+    store.offlineMode=storedOfflineMode;
+
+    // locale.set("zh-cn");
+    locale.set("en-us");
     locale.subscribe(()=>console.log('locale change'));
 
     store.init=true;
@@ -55,10 +61,30 @@
           </Tabs.Root>
         </div>
 
-        <div class="w-2/3 p-4">
-          <div class="flex w-full h-full justify-center items-center text-2xl relative -top-4">
-            {$_("right.hint")}
-          </div>
+        <div class="w-2/3">
+          {#if store.selectedFormat==null}
+            <div class="flex w-full h-full justify-center items-center text-2xl relative">
+              {$_("right.hintformat")}
+            </div>
+          {:else}
+            <div class="flex flex-row items-center gap-2">
+              <div class="font-bold pl-4">
+                {$_("right.topbar")}
+              </div>
+              {store.selectedFormat[0]}.{store.selectedFormat[1]}
+              <Button onclick={()=>{store.selectedFormat=null}} variant="ghost" class="rounded-none active:bg-gray-200">
+                <X/>
+              </Button>
+            </div>
+            <Separator/>
+            {#if store.selectedTask==null}
+              <div class="flex w-full h-full justify-center items-center text-2xl relative">
+                {$_("right.hinttask")}
+              </div>
+            {:else}
+              sb
+            {/if}
+          {/if}
         </div>
       </div>
     </div>

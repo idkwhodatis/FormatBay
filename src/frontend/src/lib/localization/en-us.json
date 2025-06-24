@@ -23,6 +23,18 @@
         },
         "close":{
             "tooltip":"Close"
+        },
+        "offline":{
+            "pure":{
+                "title":"Pure Offline",
+                "titlefull":"Pure Offline Mode",
+                "description":"All external resources are ignored, no internet access is used."
+            },
+            "download":{
+                "title":"Download Only",
+                "titlefull":"Download Only Mode",
+                "description":"External resources (e.g., links, images) are normally fetched."
+            }
         }
     },
     "left":{
@@ -76,6 +88,8 @@
         }
     },
     "right":{
-        "hint":"Select An Output Format To Get Started"
+        "hintformat":"Select An Output Format To Get Started",
+        "hinttask":"Add New Files Or Select A Task To Proceed",
+        "topbar":"Current Mode:"
     }
 }

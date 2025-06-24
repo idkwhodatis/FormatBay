@@ -23,6 +23,18 @@
         },
         "close":{
             "tooltip":"关闭"
+        },
+        "offline":{
+            "pure":{
+                "title":"仅本地",
+                "titlefull":"仅本地模式",
+                "description":"忽略所有外部资源，不使用互联网连接。"
+            },
+            "download":{
+                "title":"仅下载",
+                "titlefull":"仅下载模式",
+                "description":"正常获取外部资源（例如链接、图片）。"
+            }
         }
     },
     "left":{
@@ -76,6 +88,8 @@
         }
     },
     "right":{
-        "hint":"选择一种输出格式来开始"
+        "hint":"选择一种输出格式来开始",
+        "hinttask":"添加新文件或选择一个任务",
+        "topbar":"当前模式:"
     }
 }

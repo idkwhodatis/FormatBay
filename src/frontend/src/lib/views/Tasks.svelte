@@ -10,10 +10,14 @@
   import store from "$lib/store.svelte.js"
   import {getNextTaskID} from "$lib/utils.js"
 
-  store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"started"}
-  store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"queued"}
-  store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"stopped"}
-  store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"done"}
+  // store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"started",path:"C:/download/sb/snveds/svdsffdbjnttnjtyas"}
+  // store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"queued",path:"C:/download/sb/snveds/svd"}
+  // store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"stopped",path:"C:/download/sb/snveds/svd"}
+  // store.tasks[getNextTaskID()]={title:"test",type:"video",format:"mp4",status:"done",path:"C:/download/sb/snveds/svd"}
+  store.tasks[0]={title:"test",type:"video",format:"mp4",status:"started",path:"C:/download/sb/snveds/svdsffdbjnttnjs"}
+  store.tasks[1]={title:"test",type:"video",format:"mp4",status:"queued",path:"C:/download/sb/snveds/svd"}
+  store.tasks[2]={title:"test",type:"video",format:"mp4",status:"stopped",path:"C:/download/sb/snveds/svd"}
+  store.tasks[3]={title:"test",type:"video",format:"mp4",status:"done",path:"C:/download/sb/snveds/svd"}
 </script>
 
 <div class="flex flex-wrap gap-3 pb-1 justify-center">
