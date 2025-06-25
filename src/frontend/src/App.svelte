@@ -17,6 +17,9 @@
   import {locale} from "svelte-i18n"
 
   onMount(async ()=>{
+    const receivedConsts=await window.electronAPI.getConsts();
+    Object.assign(consts,receivedConsts);
+
     const storedFavorite=await window.store.get("favorite") ?? {};
     const favorite=Object.fromEntries(
       Object.entries(consts.formats).map(([type,format])=>[
@@ -32,8 +35,8 @@
     const storedOfflineMode=await window.store.get("offlineMode") ?? true;
     store.offlineMode=storedOfflineMode;
 
-    // locale.set("zh-cn");
-    locale.set("en-us");
+    locale.set("zh-cn");
+    // locale.set("en-us");
     locale.subscribe(()=>console.log('locale change'));
 
     store.init=true;
@@ -62,28 +65,29 @@
         </div>
 
         <div class="w-2/3">
-          {#if store.selectedFormat==null}
-            <div class="flex w-full h-full justify-center items-center text-2xl relative">
-              {$_("right.hintformat")}
-            </div>
-          {:else}
+          {#if store.selectedFormat!=null}
             <div class="flex flex-row items-center gap-2">
               <div class="font-bold pl-4">
                 {$_("right.topbar")}
               </div>
-              {store.selectedFormat[0]}.{store.selectedFormat[1]}
+              {$_("left.formats."+store.selectedFormat[0].toLowerCase()+".title")}.{store.selectedFormat[1]}
               <Button onclick={()=>{store.selectedFormat=null}} variant="ghost" class="rounded-none active:bg-gray-200">
                 <X/>
               </Button>
             </div>
             <Separator/>
-            {#if store.selectedTask==null}
-              <div class="flex w-full h-full justify-center items-center text-2xl relative">
-                {$_("right.hinttask")}
-              </div>
-            {:else}
-              sb
-            {/if}
+          {/if}
+
+          {#if store.selectedFormat==null&&store.selectedTask==null}
+            <div class="flex w-full h-full justify-center items-center text-2xl relative">
+              {$_("right.hintformat")}
+            </div>
+          {:else if store.selectedTask==null}
+            <div class="flex w-full h-full justify-center items-center text-2xl relative">
+              {$_("right.hinttask")}
+            </div>
+          {:else}
+            sb
           {/if}
         </div>
       </div>

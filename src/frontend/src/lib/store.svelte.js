@@ -6,20 +6,6 @@ const store=$state({
     selectedFormat:null,
     selectedTask:null
 });
-// TODO: persistant offlinemode setting
 export default store;
 
-export const consts={
-    formats:{
-        Video:["mp4","mkv"],
-        Audio:["mp3","flac","wav","acc"],
-        OCR:["txt","pdf"],
-        Text:["md","pdf"],
-        Data:["json","yaml","xml","csv","xlsx"],
-        Certificate:["crt","pem"]
-    },
-    locales:{
-        "en-us":"English",
-        "zh-cn":"简体中文"
-    }
-};
+export const consts={};

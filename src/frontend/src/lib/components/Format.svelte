@@ -21,7 +21,7 @@
   {/if}
   <div class="absolute bottom-2 right-2 text-4xl font-medium tracking-tight text-muted-foreground">.{format}</div>
 
-  <Button onclick={(e)=>{toggleFav(e)}} size="icon" variant="ghost" class="absolute top-1 right-1 h-6 w-6 p-0">
+  <Button onclick={toggleFav} size="icon" variant="ghost" class="absolute top-1 right-1 h-6 w-6 p-0">
     <Star fill={faved?"primary":"none"} class="h-4 w-4"/>
   </Button>
 </button>

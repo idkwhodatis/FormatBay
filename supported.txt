@@ -3,3 +3,5 @@ audio: mp3, flac, wav
 text: word, pdf, md, xlsx, csv
 subtitle: srt
 unicode/ascii/base64
+json/yaml/xml
+obj(js,py..) to json

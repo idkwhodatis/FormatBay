@@ -3,6 +3,8 @@
   import {Button,buttonVariants} from "$lib/components/ui/button/index.js";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import {Separator} from "$lib/components/ui/separator/index.js";
+  import {toast} from "svelte-sonner";
+  import {Toaster} from "$lib/components/ui/sonner/index.js";
   import {Plus,FolderPlus,Play,Square,Trash2,CirclePlay,CircleStop} from "@lucide/svelte";
   import {_} from 'svelte-i18n'
   import Task from "$lib/components/Task.svelte"
@@ -18,16 +20,39 @@
   store.tasks[1]={title:"test",type:"video",format:"mp4",status:"queued",path:"C:/download/sb/snveds/svd"}
   store.tasks[2]={title:"test",type:"video",format:"mp4",status:"stopped",path:"C:/download/sb/snveds/svd"}
   store.tasks[3]={title:"test",type:"video",format:"mp4",status:"done",path:"C:/download/sb/snveds/svd"}
+
+  function addFile(e,folder=false){
+    if(store.selectedFormat==null){
+      toast.info($_("left.tasks.add.warning"),{
+        action:{
+          label:"OK",
+          onClick:()=>{}
+      }})
+    }else{
+      let options={
+        filters:[],
+        properties:[]
+      }
+      if(folder){
+        options.properties.push("openDirectory");
+      }else{
+        options.properties.push("openFile");
+        options.properties.push("multiSelections");
+      }
+    }
+  }
 </script>
 
+<Toaster position="top-center" duration={3000}/>
+
 <div class="flex flex-wrap gap-3 pb-1 justify-center">
-  <Button onclick={()=>{console.log($state.snapshot(store.tasks));console.log(store.tasks.length)}} variant="ghost" class="rounded-sm active:bg-gray-200">
+  <Button onclick={addFile} variant="ghost" class="rounded-sm active:bg-gray-200">
     <Plus/>{$_("left.tasks.add.tooltip")}
   </Button>
   <Tooltip.Provider>
     <Tooltip.Root>
       <Tooltip.Trigger>
-        <Button variant="ghost" class="rounded-sm active:bg-gray-200">
+        <Button onclick={(e)=>{addFile(e,true)}} variant="ghost" class="rounded-sm active:bg-gray-200">
           <FolderPlus/>
         </Button>
       </Tooltip.Trigger>

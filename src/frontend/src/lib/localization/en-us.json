@@ -65,7 +65,8 @@
         "tasks":{
             "title":"Tasks",
             "add":{
-                "tooltip":"Add File"
+                "tooltip":"Add File",
+                "warning":"Please Select An Output Format First"
             },
             "addfolder":{
                 "tooltip":"Add Folder"
@@ -90,6 +91,6 @@
     "right":{
         "hintformat":"Select An Output Format To Get Started",
         "hinttask":"Add New Files Or Select A Task To Proceed",
-        "topbar":"Current Mode:"
+        "topbar":"Converting To:"
     }
 }

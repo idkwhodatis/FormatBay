@@ -65,7 +65,8 @@
         "tasks":{
             "title":"队列",
             "add":{
-                "tooltip":"添加文件"
+                "tooltip":"添加文件",
+                "warning":"请先选择一种输出格式"
             },
             "addfolder":{
                 "tooltip":"添加文件夹"
@@ -88,8 +89,8 @@
         }
     },
     "right":{
-        "hint":"选择一种输出格式来开始",
+        "hintformat":"选择一种输出格式来开始",
         "hinttask":"添加新文件或选择一个任务",
-        "topbar":"当前模式:"
+        "topbar":"转换到:"
     }
 }
