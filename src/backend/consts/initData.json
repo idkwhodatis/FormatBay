@@ -1,6 +1,6 @@
 {
-  "formats":{
-    "Video":["mp4","mkv"],
+  "outputFormats":{
+    "Video":["mp4","mkv","webm","avi","mov","wmv","flv","mxf"],
     "Audio":["mp3","flac","wav","acc"],
     "OCR":["txt","pdf"],
     "Text":["md","pdf"],

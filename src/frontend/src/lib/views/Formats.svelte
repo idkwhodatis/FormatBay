@@ -31,7 +31,7 @@
         </div>
       </Accordion.Content>
     </Accordion.Item>
-    {#each Object.entries(consts.formats) as [type,format]}
+    {#each Object.entries(consts.outputFormats) as [type,format]}
       <Accordion.Item>
         <Accordion.Trigger class="pt-3 pb-3">{$_("left.formats."+type.toLowerCase()+".title")}</Accordion.Trigger>
         <Accordion.Content>

@@ -3,5 +3,13 @@ audio: mp3, flac, wav
 text: word, pdf, md, xlsx, csv
 subtitle: srt
 unicode/ascii/base64
-json/yaml/xml
+json/yaml/xml/toml/ini
 obj(js,py..) to json
+zip/7z/iso/img
+images: jpg,png,gif
+font: ttf, otf, woff
+ppt
+speech to text?
+text to speech?
+
+test ffmpeg codec with: ffmpeg -f lavfi -i nullsrc -c:v codec -frames:v 1 -f null -

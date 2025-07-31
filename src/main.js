@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {app,BrowserWindow,ipcMain} from "electron";
 import Store from "electron-store";
 
-const consts=JSON.parse(readFileSync(new URL("consts.json",import.meta.url)));
+const initData=JSON.parse(readFileSync(new URL("./backend/consts/initData.json",import.meta.url)));
 
 let win;
 const createWindow=()=>{
@@ -27,8 +27,7 @@ app.whenReady().then(()=>{
     createWindow();
 
     win.webContents.on('did-finish-load',()=>{
-        const {formats,locales}=consts;
-        win.webContents.send("app:consts",{formats,locales});
+        win.webContents.send("app:initData",initData);
     })
 
     ipcMain.on("app:close",()=>{

@@ -5,10 +5,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "electron ."
+    "dev": "electron .",
+    "update": "bunx npm-check-updates -ui"
   },
   "devDependencies": {
-    "electron": "^36.4.0"
+    "electron": "^37.1.0"
   },
   "dependencies": {
     "electron-store": "^10.1.0"

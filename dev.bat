@@ -1,0 +1,1 @@
+wt -w 0 nt -p "PowerShell" -d . ; nt -p "PowerShell" -d .\src\frontend ; nt -p "PowerShell" -d .\src\frontend

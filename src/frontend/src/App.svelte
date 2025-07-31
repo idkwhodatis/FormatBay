@@ -17,12 +17,12 @@
   import {locale} from "svelte-i18n"
 
   onMount(async ()=>{
-    const receivedConsts=await window.electronAPI.getConsts();
-    Object.assign(consts,receivedConsts);
+    const initData=await window.electronAPI.getInitData();
+    Object.assign(consts,initData);
 
     const storedFavorite=await window.store.get("favorite") ?? {};
     const favorite=Object.fromEntries(
-      Object.entries(consts.formats).map(([type,format])=>[
+      Object.entries(consts.outputFormats).map(([type,format])=>[
         type,
         Object.fromEntries(
           format.map(f=>[f,storedFavorite?.[type]?.[f] ?? false])
