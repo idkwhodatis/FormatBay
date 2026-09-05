@@ -35,8 +35,8 @@
     const storedOfflineMode=await window.store.get("offlineMode") ?? true;
     store.offlineMode=storedOfflineMode;
 
-    locale.set("zh-cn");
-    // locale.set("en-us");
+    // locale.set("zh-cn");
+    locale.set("en-us");
     locale.subscribe(()=>console.log('locale change'));
 
     store.init=true;
