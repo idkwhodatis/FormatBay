@@ -42,7 +42,11 @@ FFmpeg/ffprobe is unavailable; opusenc integration tests also require opus-tools
 `bun run check` validates syntax/locale keys; `bun run check:tools` requires all
 real integration capabilities. Linux CI uses pinned Node/Bun and frozen lockfiles,
 runs real conversions with no skipped tests, then builds the renderer. This is
-not native Electron GUI or packaging validation.
+not native Electron GUI or packaging validation. The separate Windows workflow
+runs the same no-skip suite with checksum-pinned upstream-linked media tools and
+launches the production Electron app in an isolated profile. To run that native
+renderer/preload/IPC smoke locally after building, use
+`node scripts/electron-smoke.mjs` on a machine that can run Electron.
 
 Outputs default beside each input as `name-converted.ext`, with numeric suffixes
 when necessary. Choosing an output folder applies to newly imported tasks. Folder
@@ -50,7 +54,9 @@ import is non-recursive and limited to 200 files. Tasks are session-local; remov
 and re-add to retry. Atomic publication requires a filesystem supporting hard links
 (on the chosen output volume); unsupported volumes fail safely without overwriting.
 
-No installer/signing or Windows/macOS native validation is included yet.
+Installer/signing, interactive native file-dialog testing, visual acceptance and
+macOS native validation remain unimplemented. Windows CI smoke is not a substitute
+for those checks; see [acceptance coverage](Agents/VALIDATION.md).
 See [agent architecture](Agents/ARCHITECTURE.md) and [scope](Agents/SCOPE.md).
 
 ## Open source tools

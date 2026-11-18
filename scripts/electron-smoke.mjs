@@ -91,13 +91,7 @@ async function launch() {
   }
 }
 
-async function smoke() {
-  const {app} = await import('electron');
-  const temporary = process.env.FORMATBAY_SMOKE_ROOT;
-  if (!temporary) throw new Error('Run this harness with node scripts/electron-smoke.mjs');
-  app.setPath('userData', path.join(temporary, 'userData'));
-  app.setPath('sessionData', path.join(temporary, 'session'));
-  app.commandLine.appendSwitch('lang', 'en-US');
+async function prepareSmoke(app) {
   const errors = [];
   let window;
   let debuggerReady;
@@ -138,16 +132,56 @@ async function smoke() {
       debuggerReady = web.debugger.sendCommand('Runtime.enable').catch(error => { errors.push(`Debugger: ${error.message}`); });
     } catch (error) { errors.push(`Debugger attach: ${error.message}`); }
   });
+  async function bootDiagnostics() {
+    const diagnostic = {appReady: app.isReady(), windowExists: Boolean(window), windowDestroyed: window?.isDestroyed(),
+      expectedURL: pathToFileURL(path.join(root, 'src/frontend/dist/index.html')).href,
+      appPath: app.getAppPath(), errors: [...errors]};
+    if (!window || window.isDestroyed()) return diagnostic;
+    const web = window.webContents;
+    diagnostic.currentURL = web.getURL();
+    diagnostic.loading = web.isLoading();
+    diagnostic.preferences = web.getLastWebPreferences();
+    try {
+      diagnostic.renderer = await bounded(web.executeJavaScript(`(async () => {
+        const api = window.electronAPI;
+        const result = {readyState: document.readyState, title: document.title,
+          body: document.body?.innerText?.slice(0, 4000),
+          status: document.querySelector('[role="status"]')?.textContent,
+          apiKeys: api ? Object.keys(api) : null,
+          storeKeys: window.store ? Object.keys(window.store) : null};
+        if (typeof api?.getInitData === 'function') {
+          let timer;
+          try {
+            const data = await Promise.race([api.getInitData(), new Promise((_, reject) => {
+              timer = setTimeout(() => reject(new Error('Diagnostic init IPC timed out')), 3000);
+            })]);
+            result.init = {keys: Object.keys(data), outputFormats: data.outputFormats,
+              tools: data.tools, taskSnapshot: data.taskSnapshot};
+          } catch (error) { result.initError = error.stack ?? error.message ?? String(error); }
+          finally { clearTimeout(timer); }
+        }
+        return result;
+      })()`), 5000, 'Boot diagnostics');
+    } catch (error) { diagnostic.rendererError = error.stack ?? String(error); }
+    return diagnostic;
+  }
+  await import('../src/main.js');
+  return async function verify() {
   try {
-    await import('../src/main.js');
     const deadline = Date.now() + 45000;
     let ready = false;
     while (Date.now() < deadline) {
       assert.deepEqual(errors, []);
       if (window && !window.isDestroyed() && !window.webContents.isLoading()) {
-        ready = await bounded(window.webContents.executeJavaScript(
-          "Boolean(document.querySelector('main aside') && document.querySelector('main section h1') && window.electronAPI && window.store)"), 5000, 'Renderer boot check');
+        const boot = await bounded(window.webContents.executeJavaScript(`({
+          ready: Boolean(document.querySelector('main aside') && document.querySelector('main section h1') && window.electronAPI && window.store),
+          status: document.querySelector('main [role="status"]')?.textContent?.trim() ?? ''
+        })`), 5000, 'Renderer boot check');
+        ready = boot.ready;
         if (ready) break;
+        if (boot.status && !boot.status.startsWith('Loading FormatBay')) {
+          throw new Error(`Production renderer displayed a boot error: ${boot.status}`);
+        }
       }
       await sleep(100);
     }
@@ -209,12 +243,27 @@ async function smoke() {
   } catch (error) {
     clearTimeout(watchdog);
     console.error(error.stack ?? error);
+    try { console.error('BOOT_DIAGNOSTICS ' + JSON.stringify(await bootDiagnostics(), null, 2)); }
+    catch (diagnosticError) { console.error('Boot diagnostic collection failed: ' + diagnosticError.message); }
     app.exit(1);
   }
+  };
 }
 
 if (process.versions.electron) {
-  await smoke();
+  // Electron delays app readiness until its ESM entry finishes evaluation. Only
+  // bootstrap is top-level awaited; awaiting the smoke's window loop here would
+  // deadlock production main's app.whenReady(). Configure paths before yielding.
+  const {app} = await import('electron');
+  const temporary = process.env.FORMATBAY_SMOKE_ROOT;
+  if (!temporary) throw new Error('Run this harness with node scripts/electron-smoke.mjs');
+  app.setPath('userData', path.join(temporary, 'userData'));
+  app.setPath('sessionData', path.join(temporary, 'session'));
+  app.commandLine.appendSwitch('lang', 'en-US');
+  try {
+    const verify = await prepareSmoke(app);
+    void verify().catch(error => { console.error(error.stack ?? error); app.exit(1); });
+  } catch (error) { console.error(error.stack ?? error); app.exit(1); }
 } else {
   await launch().catch(error => { console.error(error.stack ?? error); process.exitCode = 1; });
 }
