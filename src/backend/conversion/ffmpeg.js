@@ -56,8 +56,8 @@ export class FFmpegAdapter {
       const acceptsLayout=state=>hasKnownLayout(state) &&
         (!['flac','ogg','opus'].includes(format) || hasCanonicalLayout(state));
       const warnings=state=>[
-        ...(state.hasVideo ? ['Video, subtitles and additional audio tracks are discarded; only the first audio stream is kept.'] : ['Only the first audio stream is kept.']),
-        'Metadata, chapters and embedded artwork are not retained.',
+        'Video, subtitles, additional audio tracks and data/attachments are discarded; only the first audio stream is kept.',
+        'Metadata, chapters and embedded artwork from the source are not retained; new encoder tags may be generated.',
       ];
       return [
         {id:`ffmpeg:copy:${format}`,toolId:'ffmpeg',toolVersion:this.version,label:`Copy audio to ${format.toUpperCase()} (no re-encoding)`,available:true,verifyInput:true,loss:0,

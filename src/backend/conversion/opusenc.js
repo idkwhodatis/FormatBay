@@ -33,7 +33,7 @@ export class OpusencAdapter {
          // through canonical FLAC rather than accepting a blind mapping warning.
          (state.format==='wav' && audioLayout(state)!=='3.0' && ['pcm_s16le','pcm_s24le','pcm_s32le','pcm_f32le'].includes(state.audioCodec))),
       output:state=>({kind:'audio',format:'opus',audioCodec:'opus',hasAudio:true,hasVideo:false,audioChannels:state.audioChannels,audioLayout:audioLayout(state)}),
-      warnings:()=>['Lossy Opus encoding can reduce audio quality.','Metadata, chapters and embedded artwork are not retained.','Opus uses a 48 kHz output sample rate.'],
+      warnings:()=>['Lossy Opus encoding can reduce audio quality.','Metadata, chapters and embedded artwork from the source are not retained; new encoder tags may be generated.','Opus uses a 48 kHz output sample rate.'],
     }];
   }
   async execute(step,inputPath,outputPath,{signal}={}) {

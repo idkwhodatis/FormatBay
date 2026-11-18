@@ -11,7 +11,8 @@ re-encoding; other targets are encoded with FFmpeg or optional opusenc.
 
 This branch supports **WAV, FLAC, MP3, AAC, OGG and Opus audio outputs**, depending
 on the installed tools and their encoders. Only the first audio stream is kept;
-video/subtitles/metadata/artwork are discarded. Warnings explain lossy encoding
+video/subtitles/source metadata/chapters/artwork are discarded. New technical
+encoder tags may be generated; this is not a preservation/remux workflow. Warnings explain lossy encoding
 and precision changes. Inputs and existing outputs are never overwritten.
 
 The planner supports multi-step, multi-tool routes (covered with tool A/B tests).

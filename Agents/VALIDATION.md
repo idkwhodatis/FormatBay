@@ -77,3 +77,13 @@ the FFmpeg→opusenc route, decodes output independently, and preserves input by
 Only OS picker return values and Explorer reveal are stubbed. These are not
 interactive native dialog, signing, SmartScreen or installer tests. The artifact
 contains matching tracked source, build provenance and inclusive license notices.
+
+## Explicit stream and source-metadata loss
+
+A real Matroska fixture contains video, two different audio tracks, subtitles,
+source global/stream tags and a chapter. All six audio outputs and the opusenc
+chain must contain exactly one audio stream, no chapters or source marker tags.
+The WAV copy route's decoded hash must match the first input audio, with original
+source bytes unchanged. A tagged FLAC tests direct opusenc comment removal too.
+Technical encoder/vendor tags may be newly generated; no metadata-preservation
+capability is claimed. Audio-only routes show the same explicit stream-loss warning.
