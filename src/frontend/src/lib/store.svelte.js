@@ -1,6 +1,6 @@
 const store = $state({
   init: false, offlineMode: true, favorite: {}, tasks: {},
-  selectedFormat: null, selectedTask: null, outputDirectory: null,
+  selectedFormat: null, selectedEncoder: '', selectedTask: null, outputDirectory: null,
   tab: 'formats', busy: false, error: '', tools: []
 });
 export default store;
@@ -12,11 +12,13 @@ export function updateTasks(tasks) {
 export async function addFiles(folder = false) {
   if (!store.selectedFormat || store.busy) return;
   const format = store.selectedFormat[1];
+  const target = {kind: 'audio', format};
+  if (format === 'opus' && store.selectedEncoder) target.encoder = store.selectedEncoder;
   store.busy = true;
   store.error = '';
   try {
     const before = new Set(Object.keys(store.tasks));
-    updateTasks(await window.electronAPI.addFiles({kind: 'audio', format}, folder));
+    updateTasks(await window.electronAPI.addFiles(target, folder));
     const added = Object.keys(store.tasks).find(id => !before.has(id));
     if (added) { store.selectedTask = added; store.tab = 'tasks'; }
   } catch (error) { store.error = error.message; }

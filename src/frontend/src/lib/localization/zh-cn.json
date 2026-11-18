@@ -117,6 +117,15 @@
       "blocked": "不可转换"
     },
     "outputHint": "输出文件夹设置用于之后添加的任务。所有当前转换均为本地离线操作。",
-    "resetOutput": "恢复默认输出"
+    "resetOutput": "恢复默认输出",
+    "encoder": "编码器",
+    "autoEncoder": "自动选择",
+    "opusencEncoder": "opusenc（多工具）",
+    "encoderHint": "此设置用于之后添加的任务。自动模式优先选择合适的路线；opusenc 模式指定最终编码器，必要时自动衔接中间格式。",
+    "optionalTool": "可选工具未安装。自动模式仍可使用已安装的编码器。",
+    "phase": {
+      "converting": "正在转换",
+      "verifying": "正在验证输出"
+    }
   }
 }

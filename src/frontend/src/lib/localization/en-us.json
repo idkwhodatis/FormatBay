@@ -117,6 +117,15 @@
       "blocked": "Unavailable route"
     },
     "outputHint": "Output folder applies to newly added tasks. All current conversions run locally, even when Pure Offline is off.",
-    "resetOutput": "Reset output"
+    "resetOutput": "Reset output",
+    "encoder": "Encoder",
+    "autoEncoder": "Automatic",
+    "opusencEncoder": "opusenc (multi-tool)",
+    "encoderHint": "Applies to new tasks. Automatic chooses a suitable route; opusenc selects the final encoder and adds an intermediate conversion when needed.",
+    "optionalTool": "Optional tool not installed. Automatic can still use available encoders.",
+    "phase": {
+      "converting": "Converting",
+      "verifying": "Verifying output"
+    }
   }
 }

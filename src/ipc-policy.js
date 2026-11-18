@@ -5,10 +5,16 @@ export function assertTrustedSender(event, win, allowedURL, quitting = false) {
     throw new Error('Untrusted IPC sender');
   }
 }
-export function validateTarget(target, outputFormats) {
+export function validateTarget(target, outputFormats, targetEncoders = {}) {
   if (!target || target.kind !== 'audio' || typeof target.format !== 'string' ||
       !outputFormats.Audio?.includes(target.format)) throw new Error('Unsupported target');
-  return {kind: 'audio', format: target.format};
+  const clean = {kind: 'audio', format: target.format};
+  if (target.encoder !== undefined) {
+    if (target.format !== 'opus' || target.encoder !== 'opusenc' ||
+        !targetEncoders.opus?.includes('opusenc')) throw new Error('Unsupported or unavailable encoder');
+    clean.encoder = 'opusenc';
+  }
+  return clean;
 }
 export function validateSetting(key, value, outputFormats) {
   if (key === 'offlineMode') {

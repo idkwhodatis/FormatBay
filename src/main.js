@@ -46,7 +46,7 @@ app.whenReady().then(async () => {
   });
   handle('store:set', (key, value) => settings.set(key, validateSetting(key, value, catalog.outputFormats)));
   handle('conversion:add', (target, folder = false) => {
-    const validatedTarget = validateTarget(target, catalog.outputFormats);
+    const validatedTarget = validateTarget(target, catalog.outputFormats, catalog.targetEncoders);
     if (typeof folder !== 'boolean') throw new Error('Invalid folder flag');
     return withDialog(async () => {
       const result = await dialog.showOpenDialog(win, {properties: folder ? ['openDirectory'] : ['openFile', 'multiSelections']});

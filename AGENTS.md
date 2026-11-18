@@ -2,7 +2,7 @@
 
 FormatBay is an offline-first desktop converter. The conversion-graph branch
 implements target-first audio conversion from local video/audio files. Generic
-multi-tool graph planning is tested; the production adapter is FFmpeg only.
+multi-tool graph planning and real FFmpeg → opusenc execution are tested.
 
 ## Stack and commands
 
@@ -14,7 +14,8 @@ multi-tool graph planning is tested; the production adapter is FFmpeg only.
 - Development: `cd src/frontend && bun run dev`, then root `bun run dev`.
 - Tests: `bun run test` (Node test runner). FFmpeg integration tests skip explicitly
   if system FFmpeg/ffprobe is unavailable; no binaries are auto-downloaded.
-- FFmpeg and ffprobe must be installed on PATH. Restart after installing them.
+- FFmpeg and ffprobe must be installed on PATH. Optional opusenc from Xiph
+  opus-tools enables a second production encoder. Restart after installing tools.
 
 ## Contributor map and rules
 
@@ -41,7 +42,7 @@ URL. New windows/navigation and unrequested permissions are denied.
 | app:initData | invoke | catalog, tool availability, tasks, outputDirectory |
 | app:close / app:minimize | send | no payload |
 | store:get / store:set | invoke | allowlisted favorite/offlineMode only |
-| conversion:add | invoke | target {kind:audio,format}, folder boolean; native dialog selects paths |
+| conversion:add | invoke | target {kind:audio,format,encoder?}, folder boolean; native dialog selects paths |
 | conversion:outputDirectory | invoke | native output-directory picker |
 | conversion:resetOutputDirectory | invoke | restore beside-input output for future imports |
 | conversion:action | invoke | start/cancel/remove + backend task ID |
@@ -98,7 +99,18 @@ may contain cycles; an individual executable plan must be bounded and acyclic.
    Toronto working hours (Mon 08:30–18:00, Tue–Fri 09:00–18:00); no merge.
 
 Initial deliverable deliberately focuses on real audio outputs from audio/video
-inputs, with a generic multi-tool planner. A second production adapter, OCR/data,
-video output encoding, multi-output/fan-out, packaging and a global topology
+inputs, with a generic multi-tool planner. OCR/data, video output encoding, multi-output/fan-out, packaging and a global topology
 visualizer remain future work. Do not advertise a format until its adapter can
 actually produce it. Report unrun native UI/platform checks explicitly.
+
+### Phase 2: optional opusenc adapter (implemented)
+
+- `opusenc` accepts declared local PCM WAV/FLAC states and outputs Opus; no
+  automatic tool downloads. FFmpeg is still required for probing and verification.
+- Automatic chooses the best available route; if FFmpeg Opus encoding is absent,
+  it can use a lossless intermediate and opusenc. Advanced Opus encoder selection
+  constrains the final tool, without permitting arbitrary renderer tool commands.
+- Before direct external encoding, validate the source; validate every intermediate
+  and final output. Show current step and conversion/verification phase.
+- Real video → FFmpeg FLAC → opusenc Opus, unavailable tools, damaged input,
+  second-step failure and cancellation must be covered by tests.

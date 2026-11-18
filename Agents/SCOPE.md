@@ -16,11 +16,13 @@
 
 ## Explicit limitations
 
-- Single production adapter. Generic multi-hop routing is tested with fake A/B
-  tools; no claim that a second production converter is integrated.
+- Two production adapters: FFmpeg and optional Xiph opusenc. Real cross-tool
+  routing is tested, including automatic fallback when FFmpeg Opus encoding is
+  unavailable. FFmpeg remains required for probing/output verification.
 - Audio-only outputs, first audio stream. Video/subtitles/chapters/metadata/artwork
   are discarded and disclosed; lossy or precision changes have warnings.
-- Tool discovery is at startup; install FFmpeg/ffprobe manually and restart.
+- Tool discovery is at startup; install FFmpeg/ffprobe and optional opus-tools
+  manually and restart. No automated downloads.
 - No downloads/network conversions; the offline toggle is retained but all
   implemented adapters are local. Playlist/manifest inputs are rejected.
 - Output directory applies to newly imported tasks. Default is source directory.
@@ -40,3 +42,6 @@ have been verified. Document actual native smoke coverage in the delivery summar
 Encoding preserves channel count unless a declared encoder limit requires a
 downmix (MP3: 2, Opus: 8), which is explicitly warned. Stream-copy paths preserve
 channel count. The planned channel count is verified in the output.
+
+Advanced Opus encoder selection can require opusenc; conversion/verification
+phase and current step are shown. Native GUI interaction remains unverified.

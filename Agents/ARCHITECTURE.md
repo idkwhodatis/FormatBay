@@ -46,11 +46,23 @@ explicitly. All implemented routes are local, regardless of offline switch.
 
 ## Scope boundaries
 
-The graph is generic and supports A→F→L across tools in unit tests; production
-currently has one real adapter and generally selects a direct FFmpeg path. No
-OCR/data/video output adapter, binary bundling, automatic installer, package/sign
+The graph supports A→F→L in unit tests and real FFmpeg → FLAC → opusenc
+execution. Automatic prefers equivalent direct paths; an Opus encoder preference
+can require opusenc as the final tool. Optional opusenc requires local Xiph
+opus-tools and FFmpeg probing/full-decode verification, not automatic installation.
+No OCR/data/video output adapter, binary bundling, automatic installer, package/sign
 pipeline, durable queue/resume, drag-drop, recursive import or topology visualizer.
 
 Encoding preserves channel count unless a declared encoder limit requires a
 downmix (MP3: 2, Opus: 8), which is explicitly warned. Stream-copy paths preserve
 channel count. The planned channel count is verified in the output.
+
+## Optional Opus encoder
+
+`conversion/opusenc.js` declares compatible mono-through-eight-channel WAV PCM /
+FLAC input states and a lossy Opus edge. Startup exposes `targetEncoders` separately
+from target formats. Narrow IPC accepts only advertised `encoder: opusenc` on an
+Opus target. The planner includes the final-tool constraint in goal acceptance and
+search-state pruning. An original input to an external encoder is fully validated
+first; intermediates are already validated. Tool errors/cancel never publish partial
+output. Task `phase` and `stepIndex` expose truthful per-step UI progress.

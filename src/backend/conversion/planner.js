@@ -13,8 +13,9 @@ export function matchesTarget(state, target) {
 }
 
 /** Find a bounded, cycle-free route; minimize quality loss before step count. */
-export function planConversion(input, target, capabilities, {offline = true, maxSteps = 4, maxStates = 2000} = {}) {
+export function planConversion(input, target, capabilities, {offline = true, maxSteps = 4, maxStates = 2000, requiredFinalTool = null} = {}) {
   if (!input || !target || !Array.isArray(capabilities)) throw new Error('Invalid conversion request');
+  if (requiredFinalTool!==null && (typeof requiredFinalTool!=='string'||!requiredFinalTool)) throw new Error('Invalid encoder selection');
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 16) throw new Error('Invalid route limit');
   if (!Number.isInteger(maxStates) || maxStates < 1 || maxStates > 10000) throw new Error('Invalid search limit');
   const ids = new Set();
@@ -32,7 +33,7 @@ export function planConversion(input, target, capabilities, {offline = true, max
     queue.sort((a,b) => a.loss-b.loss || a.steps.length-b.steps.length);
     const current = queue.shift();
     // A conversion request always produces a new artifact, even for the same format.
-    if (current.steps.length && matchesTarget(current.state,target)) {
+    if (current.steps.length && matchesTarget(current.state,target) && (!requiredFinalTool || current.steps.at(-1).toolId===requiredFinalTool)) {
       return {ok:true,input,target,steps:current.steps,warnings:[...new Set(current.warnings)],loss:current.loss};
     }
     if (current.steps.length >= maxSteps) continue;
@@ -45,7 +46,7 @@ export function planConversion(input, target, capabilities, {offline = true, max
       const loss = current.loss + edge.loss;
       const depth = current.steps.length+1;
       // Keep depth in the key: a lower-loss long route can run out of the step budget.
-      const searchKey = `${key}:${depth}`;
+      const searchKey = `${key}:${depth}:${requiredFinalTool?edge.toolId:''}`;
       if ((best.get(searchKey) ?? Infinity) <= loss) continue;
       best.set(searchKey,loss);
       const warnings = edge.warnings?.(current.state) ?? [];

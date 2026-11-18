@@ -58,28 +58,49 @@
           <p class="text-sm text-muted-foreground">{$_('conversion.targetFirst')}</p>
           <h1 class="text-2xl font-semibold mt-1">{store.selectedFormat ? `.${store.selectedFormat[1]}` : $_('right.hintformat')}</h1>
           <p class="mt-2 text-sm text-muted-foreground">{$_('conversion.audioScope')}</p>
+          {#if store.selectedFormat?.[1] === 'opus' && consts.targetEncoders?.opus?.includes('opusenc')}
+            <label class="flex items-center gap-2 mt-3 text-sm">
+              {$_('conversion.encoder')}
+              <select bind:value={store.selectedEncoder} disabled={store.busy} class="border rounded p-2">
+                <option value="">{$_('conversion.autoEncoder')}</option>
+                <option value="opusenc">{$_('conversion.opusencEncoder')}</option>
+              </select>
+            </label>
+            <p class="mt-1 text-xs text-muted-foreground">{$_('conversion.encoderHint')}</p>
+          {/if}
         </header>
-        {#each store.tools.filter(tool => !tool.available) as tool}
+        {#each store.tools.filter(tool => !tool.available && !tool.optional) as tool}
           <div role="status" class="p-4 border rounded-lg bg-amber-50 text-amber-950">
             <strong>{tool.id}: {$_('conversion.unavailable')}</strong><p class="text-sm">{tool.detail}</p>
             <p class="text-sm mt-2">{$_('conversion.installTools')}</p>
           </div>
         {/each}
+        {#if store.selectedFormat?.[1] === 'opus'}
+          {#each store.tools.filter(tool => !tool.available && tool.optional) as tool}
+            <p class="text-xs text-muted-foreground">{tool.id}: {$_('conversion.optionalTool')}</p>
+          {/each}
+        {/if}
         {#if selected}
           <article class="border rounded-lg p-5 space-y-4">
             <div class="flex justify-between gap-3"><h2 class="font-semibold break-all">{selected.inputPath.split(/[\\/]/).pop()}</h2><span>{$_(`conversion.status.${selected.status}`)}</span></div>
             <p class="text-xs text-muted-foreground break-all">{selected.inputPath}</p>
             <h3 class="font-medium">{$_('conversion.route')} → .{selected.target.format}</h3>
+            {#if selected.target.format === 'opus'}<p class="text-sm text-muted-foreground">{$_('conversion.encoder')}: {selected.target.encoder ?? $_('conversion.autoEncoder')}</p>{/if}
             {#if selected.plan}
               <ol class="space-y-3">
                 {#each selected.plan.steps as step, i}
-                  <li class="p-3 bg-muted rounded"><span class="font-medium">{i + 1}. {step.label}</span><span class="text-sm text-muted-foreground block">{step.toolId} → {step.output?.format ?? step.output?.container ?? step.output?.kind ?? ''}</span></li>
+                  <li class="p-3 bg-muted rounded" class:ring-2={selected.status === 'running' && selected.stepIndex === i} aria-current={selected.status === 'running' && selected.stepIndex === i ? 'step' : undefined}><span class="font-medium">{i + 1}. {step.label}</span><span class="text-sm text-muted-foreground block">{step.toolId} → {step.output?.format ?? step.output?.container ?? step.output?.kind ?? ''}</span></li>
                 {/each}
               </ol>
               {#each selected.plan.warnings ?? [] as warning}<p class="text-sm text-amber-800">{warning}</p>{/each}
             {/if}
             {#if selected.error}<p role="alert" class="text-red-700 break-words">{selected.error}</p>{/if}
-            {#if selected.status === 'running'}<progress class="w-full" max="100" value={selected.progress ?? 0}></progress>{/if}
+            {#if selected.status === 'running'}
+              {#if ['converting', 'verifying'].includes(selected.phase)}
+                <p class="text-sm" role="status">{$_('conversion.phase.' + selected.phase)}{#if Number.isInteger(selected.stepIndex)} · {selected.stepIndex + 1} / {selected.plan?.steps.length ?? 0}{/if}</p>
+              {/if}
+              <progress aria-label={$_('conversion.progress')} class="w-full" max="100" value={selected.progress ?? 0}></progress>
+            {/if}
             {#if selected.outputPath}<p class="text-sm break-all">{$_('conversion.output')}: {selected.outputPath}</p>{/if}
           </article>
         {:else}

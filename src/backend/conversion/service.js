@@ -2,12 +2,14 @@ import {randomUUID} from 'node:crypto';
 import {mkdtemp,rm,stat,link,realpath} from 'node:fs/promises';
 import path from 'node:path';
 import {FFmpegAdapter} from './ffmpeg.js';
+import {OpusencAdapter} from './opusenc.js';
 import {planConversion,matchesTarget} from './planner.js';
 
 const statuses=new Set(['ready','running','queued']);
 /** Backend-owned tasks. The renderer can never supply an executable plan. */
 export class ConversionService {
-  constructor({onChange=()=>{},adapter=new FFmpegAdapter(),adapters=[adapter]}={}) {
+  constructor({onChange=()=>{},adapter,adapters}={}) {
+    adapters ??= adapter?[adapter]:[new FFmpegAdapter(),new OpusencAdapter()];
     this.adapter=adapters[0];this.adapters=adapters;this.toolAdapters=new Map();this.formats=[];this.onChange=onChange;this.tasks=new Map();this.internal=new Map();
     this.outputDirectory=null;this.active=null;this.queue=[];this.closing=false;
     this.addChain=Promise.resolve();this.importController=new AbortController();
@@ -19,9 +21,18 @@ export class ConversionService {
       if (this.toolAdapters.has(tool.id)) throw new Error('Duplicate conversion tool ID');
       this.toolAdapters.set(tool.id,this.adapters[index]);
     });
-    this.capabilities=this.adapters.flatMap(adapter=>adapter.capabilities());
-    this.formats=[...new Set(this.adapters.flatMap(adapter=>adapter.formats()))];
-    return {outputFormats:{Audio:this.formats},tools};
+    const primaryAvailable=tools[0]?.available===true;
+    tools.forEach((tool,index)=>{
+      if (this.adapters[index] instanceof OpusencAdapter && tool.available && primaryAvailable && !this.adapter.canDecode?.('opus')) {
+        tool.available=false;tool.detail='opusenc is installed, but FFmpeg needs an Opus decoder to verify its output.';
+      }
+    });
+    // Every production route still requires the primary probe and verifier.
+    const enabled=this.adapters.filter((adapter,index)=>primaryAvailable && tools[index].available);
+    this.capabilities=enabled.flatMap(adapter=>adapter.capabilities());
+    this.formats=[...new Set(enabled.flatMap(adapter=>adapter.formats()))];
+    this.targetEncoders=this.capabilities.some(edge=>edge.toolId==='opusenc')?{opus:['opusenc']}:{};
+    return {outputFormats:{Audio:this.formats},tools,targetEncoders:this.targetEncoders};
   }
   list() {return structuredClone([...this.tasks.values()]);}
   emit() {this.onChange(this.list());}
@@ -35,6 +46,7 @@ export class ConversionService {
     if (this.closing) throw new Error('Application is closing');
     if (!Array.isArray(paths)||!paths.length||paths.length>200||paths.some(file=>typeof file!=='string'||!path.isAbsolute(file))) throw new Error('Select 1–200 local files');
     if (!target || target.kind!=='audio' || !this.formats.includes(target.format)) throw new Error('Unsupported output format or unavailable tool');
+    if (target.encoder!==undefined && !this.targetEncoders[target.format]?.includes(target.encoder)) throw new Error('Selected encoder is unavailable for this format');
     // Serialize imports to keep the task limit deterministic under repeated clicks.
     const operation=this.addChain.then(async()=>{
       if (this.closing) throw new Error('Application is closing');
@@ -42,12 +54,12 @@ export class ConversionService {
       for (const inputPath of paths) {
         if (this.closing) break;
         const id=randomUUID();
-        const task={id,inputPath,target:{kind:target.kind,format:target.format},status:'blocked',plan:null,error:null,progress:0,outputPath:null};
+        const task={id,inputPath,target:{kind:target.kind,format:target.format,...(target.encoder?{encoder:target.encoder}:{})},status:'blocked',plan:null,error:null,progress:0,outputPath:null};
         try {
           const canonical=await realpath(inputPath);
           const probe=await this.adapter.probe(canonical,{signal:this.importController.signal});
           const identity=await stat(canonical);
-          const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true});
+          const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null});
           if (!plan.ok) throw new Error(plan.message);
           task.plan=plan;task.status='ready';
           this.internal.set(id,{inputPath:canonical,probe,identity:{size:identity.size,mtimeMs:identity.mtimeMs},outputDirectory:this.outputDirectory});
@@ -91,7 +103,7 @@ export class ConversionService {
       const identity=await stat(internal.inputPath);
       if (identity.size!==internal.identity.size || identity.mtimeMs!==internal.identity.mtimeMs) throw new Error('The input changed since planning. Remove and add the file again.');
       const probe=await this.adapter.probe(internal.inputPath,{signal});
-      const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true});
+      const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null});
       if (!plan.ok) throw new Error(plan.message);
       if (JSON.stringify(plan)!==JSON.stringify(task.plan)) throw new Error('The input changed since planning. Remove and add the file again to review its new route.');
       const directory=internal.outputDirectory ?? path.dirname(internal.inputPath);
@@ -99,12 +111,21 @@ export class ConversionService {
       let current=internal.inputPath;
       for (const [index,step] of plan.steps.entries()) {
         if (signal.aborted) throw new Error('Cancelled');
+        task.phase='converting';task.stepIndex=index;this.emit();
         const output=path.join(temp,`step-${index}.${step.output.format}`);
         const executor=this.toolAdapters.get(step.toolId);
         if (!executor) throw new Error('Planned tool is no longer available');
+        // External encoders may recover corrupt input silently. Validate the
+        // original stream before their first step; intermediates were checked.
+        if (index===0 && executor!==this.adapter) {
+          task.phase='verifying';this.emit();
+          await this.adapter.verify?.(current,{signal,expectedDuration:probe.audioDuration||0});
+          task.phase='converting';this.emit();
+        }
         await executor.execute(step,current,output,{signal,duration:probe.duration,onProgress:value=>{
           task.progress=Math.min(99,Math.round(100*(index+value)/plan.steps.length));this.emit();
         }});
+        task.phase='verifying';this.emit();
         const verified=await this.adapter.probe(output,{signal});
         if (!verified.size || !matchesTarget(verified.state,step.output) || verified.state.audioCodec!==step.output.audioCodec || !verified.state.hasAudio || verified.state.hasVideo || (step.output.audioChannels && verified.state.audioChannels!==step.output.audioChannels)) throw new Error('Tool output did not match the planned media format');
         await this.adapter.verify?.(output,{signal,expectedDuration:probe.audioDuration||verified.audioDuration||0});
@@ -119,7 +140,7 @@ export class ConversionService {
         try {await rm(temp,{recursive:true,force:true});}
         catch {task.error=(task.error?task.error+' ':'')+'Temporary files could not be cleaned up: '+temp;}
       }
-      delete internal.controller;this.emit();
+      delete internal.controller;delete task.phase;this.emit();
     }
   }
   async shutdown() {

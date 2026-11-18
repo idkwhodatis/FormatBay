@@ -27,3 +27,14 @@ test('settings are allowlisted and favorite values normalized to catalog boolean
   assert.throws(() => validateSetting('favorite', [], {}));
   assert.deepEqual(validateSetting('favorite', {Audio:{wav:true,mp3:1,evil:true},Other:{}}, {Audio:['wav','mp3']}), {Audio:{wav:true,mp3:false}});
 });
+test('encoder preference requires advertised opusenc capability for Opus only', () => {
+  const outputs={Audio:['opus','wav']};const encoders={opus:['opusenc']};
+  assert.deepEqual(validateTarget({kind:'audio',format:'opus'},outputs,encoders),{kind:'audio',format:'opus'});
+  assert.deepEqual(validateTarget({kind:'audio',format:'opus',encoder:'opusenc',command:'ignored'},outputs,encoders),{kind:'audio',format:'opus',encoder:'opusenc'});
+  for(const encoder of ['',null,1,'ffmpeg','unknown'])
+    assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder},outputs,encoders));
+  assert.throws(()=>validateTarget({kind:'audio',format:'wav',encoder:'opusenc'},outputs,encoders));
+  assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder:'opusenc'},outputs,{}));
+  assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder:'opusenc'},outputs));
+  assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder:'opusenc'},{Audio:[]},encoders));
+});
