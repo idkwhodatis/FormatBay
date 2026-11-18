@@ -1,27 +1,20 @@
 <script>
-  import {Button} from "$lib/components/ui/button/index.js";
-  import {Star} from "@lucide/svelte";
-  import {_} from 'svelte-i18n'
-  
-  import store from "$lib/store.svelte.js"
-
-  let {type,format,showInFav=false}=$props();
-  let faved=$derived(store.favorite[type][format])
-
-  async function toggleFav(e){
-    e.stopPropagation();
-    store.favorite[type][format]=!store.favorite[type][format];
-    await window.store.set("favorite",$state.snapshot(store.favorite));
+  import {Star} from '@lucide/svelte';
+  import {_} from 'svelte-i18n';
+  import store from '$lib/store.svelte.js';
+  let {type, format, showInFav = false} = $props();
+  let faved = $derived(store.favorite[type]?.[format] === true);
+  async function toggleFav() {
+    const previous = faved;
+    store.favorite[type][format] = !previous;
+    try { await window.store.set('favorite', $state.snapshot(store.favorite)); }
+    catch (error) { store.favorite[type][format] = previous; store.error = error.message; }
   }
 </script>
-
-<button onclick={()=>{store.selectedFormat=[type,format]}} class="relative rounded-lg shadow-sm bg-white w-28 h-22 flex items-center justify-center border hover:bg-gray-200 active:bg-gray-300">
-  {#if showInFav}
-    <div class="absolute top-2 left-2 text-base italic">{$_("left.formats."+type.toLowerCase()+".title")}</div>
-  {/if}
-  <div class="absolute bottom-2 right-2 text-2xl font-medium tracking-tight text-muted-foreground">.{format}</div>
-
-  <Button onclick={toggleFav} size="icon" variant="ghost" class="absolute top-1 right-1 h-6 w-6 p-0">
-    <Star fill={faved?"primary":"none"} class="h-4 w-4"/>
-  </Button>
-</button>
+<div class="relative rounded-lg border w-28 h-22" class:bg-muted={store.selectedFormat?.[1] === format}>
+  <button class="w-full h-full text-left p-3 pt-8 rounded-lg hover:bg-muted" aria-pressed={store.selectedFormat?.[1] === format} onclick={() => {store.selectedFormat = [type, format]; store.selectedTask = null;}}>
+    {#if showInFav}<span class="text-xs">{$_('left.formats.' + type.toLowerCase() + '.title')}</span>{/if}
+    <span class="text-2xl block">.{format}</span>
+  </button>
+  <button onclick={toggleFav} aria-label={`${$_('left.formats.favorite.title')} .${format}`} aria-pressed={faved} class="absolute top-1 right-1 p-1 rounded hover:bg-gray-200"><Star size={16} fill={faved ? 'currentColor' : 'none'}/></button>
+</div>

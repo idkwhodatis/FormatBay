@@ -1,144 +1,47 @@
 <script>
-  import * as Menubar from "$lib/components/ui/menubar/index.js";
-  import {Button,buttonVariants} from "$lib/components/ui/button/index.js";
-  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-  import {Label} from "$lib/components/ui/label/index.js";
-  import {Switch} from "$lib/components/ui/switch/index.js";
-  import * as HoverCard from "$lib/components/ui/hover-card/index.js";
-  import {Minus,Square,X,FolderCode} from "@lucide/svelte";
-  import {_} from 'svelte-i18n'
-  import HoverCardContent from "./ui/hover-card/hover-card-content.svelte";
-
-  import store from "$lib/store.svelte.js";
-
-  let offlineModeText=$derived(store.offlineMode ? "topbar.offline.pure":"topbar.offline.download")
-</script>
- 
-<Menubar.Root class="rounded-none" style="margin-right:0;padding-right:0;-webkit-app-region:drag;">
-  <div class="flex no-drag">
-    <Menubar.Menu>
-      <Menubar.Trigger>{$_("topbar.file.title")}</Menubar.Trigger>
-      <Menubar.Content>
-        <Menubar.Item>
-          New Tab
-          <Menubar.Shortcut>⌘T</Menubar.Shortcut>
-        </Menubar.Item>
-        <Menubar.Item>New Window</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Share</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Print</Menubar.Item>
-      </Menubar.Content>
-    </Menubar.Menu>
-    <Menubar.Menu>
-      <Menubar.Trigger>{$_("topbar.edit.title")}</Menubar.Trigger>
-      <Menubar.Content>
-        <Menubar.Item>
-          Edit
-          <Menubar.Shortcut>⌘T</Menubar.Shortcut>
-        </Menubar.Item>
-        <Menubar.Item>New Window</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Share</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Print</Menubar.Item>
-      </Menubar.Content>
-    </Menubar.Menu>
-    <Menubar.Menu>
-      <Menubar.Trigger>{$_("topbar.view.title")}</Menubar.Trigger>
-      <Menubar.Content>
-        <Menubar.Item>
-          Edit
-          <Menubar.Shortcut>⌘T</Menubar.Shortcut>
-        </Menubar.Item>
-        <Menubar.Item>New Window</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Share</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Print</Menubar.Item>
-      </Menubar.Content>
-    </Menubar.Menu>
-    <Menubar.Menu>
-      <Menubar.Trigger>{$_("topbar.settings.title")}</Menubar.Trigger>
-      <Menubar.Content>
-        <Menubar.Item>
-          Edit
-          <Menubar.Shortcut>⌘T</Menubar.Shortcut>
-        </Menubar.Item>
-        <Menubar.Item>New Window</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Share</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Print</Menubar.Item>
-      </Menubar.Content>
-    </Menubar.Menu>
-    <Menubar.Menu>
-      <Menubar.Trigger>{$_("topbar.about.title")}</Menubar.Trigger>
-      <Menubar.Content>
-        <Menubar.Item>
-          Edit
-          <Menubar.Shortcut>⌘T</Menubar.Shortcut>
-        </Menubar.Item>
-        <Menubar.Item>New Window</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Share</Menubar.Item>
-        <Menubar.Separator/>
-        <Menubar.Item>Print</Menubar.Item>
-      </Menubar.Content>
-    </Menubar.Menu>
-  </div>
-
-  <div class="flex no-drag space-x-2">
-    <Button variant="ghost" class="rounded-none active:bg-gray-200">
-      <FolderCode/>{$_("topbar.outputfolder.tooltip")}
-    </Button>
-
-    <HoverCard.Root>
-      <HoverCard.Trigger>
-        <div class="flex flex-row h-full items-center space-x-2">
-          <Switch bind:checked={store.offlineMode} onCheckedChange={async ()=>{await window.store.set("offlineMode",store.offlineMode)}} id="offline"/>
-          <Label for="offline">{$_(offlineModeText+".title")}</Label>
-        </div>
-      </HoverCard.Trigger>
-      <HoverCard.Content class="w-82">
-        <div class="flex flex-col justify-between space-x-4 space-y-1">
-            <h3 class="font-bold">{$_(offlineModeText+".titlefull")}</h3>
-            <p>{$_(offlineModeText+".description")}</p>
-        </div>
-      </HoverCard.Content>
-    </HoverCard.Root>
-  </div>
-
-  <div class="ml-auto flex no-drag">
-    <Tooltip.Provider>
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          <Button onclick={window.electronAPI.minimizeApp} size="icon" variant="ghost" class="rounded-none active:bg-gray-200">
-            <Minus/>
-          </Button>
-        </Tooltip.Trigger>
-        <Tooltip.Content>
-          <p>{$_("topbar.minimize.tooltip")}</p>
-        </Tooltip.Content>
-      </Tooltip.Root>
-    </Tooltip.Provider>
-    <Tooltip.Provider>
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          <Button onclick={window.electronAPI.closeApp} size="icon" variant="ghost" class="rounded-none active:bg-gray-200">
-            <X/>
-          </Button>
-        </Tooltip.Trigger>
-        <Tooltip.Content>
-          <p>{$_("topbar.close.tooltip")}</p>
-        </Tooltip.Content>
-      </Tooltip.Root>
-    </Tooltip.Provider>
-  </div>
-</Menubar.Root>
-
-<style>
-  .no-drag{
-    -webkit-app-region:no-drag
+  import {Button} from '$lib/components/ui/button/index.js';
+  import {Minus, X, FolderOpen} from '@lucide/svelte';
+  import {_, locale} from 'svelte-i18n';
+  import store from '$lib/store.svelte.js';
+  let choosing = $state(false);
+  let savingOffline = $state(false);
+  async function chooseOutput() {
+    if (choosing) return;
+    choosing = true;
+    try { store.outputDirectory = await window.electronAPI.chooseOutputDirectory(); }
+    catch (error) { store.error = error.message; }
+    finally { choosing = false; }
   }
-</style>
+  async function resetOutput() {
+    if (choosing) return;
+    choosing = true;
+    try { store.outputDirectory = await window.electronAPI.resetOutputDirectory(); }
+    catch (error) { store.error = error.message; }
+    finally { choosing = false; }
+  }
+  async function changeOffline(event) {
+    const input = event.currentTarget;
+    if (savingOffline) { input.checked = store.offlineMode; return; }
+    const value = input.checked;
+    savingOffline = true;
+    try { await window.store.set('offlineMode', value); store.offlineMode = value; }
+    catch (error) { input.checked = store.offlineMode; store.error = error.message; }
+    finally { savingOffline = false; }
+  }
+</script>
+<div class="flex gap-3 items-center border-b px-3 py-2" style="-webkit-app-region:drag">
+  <strong class="mr-2">FormatBay</strong>
+  <div class="no-drag flex items-center gap-3">
+    <Button variant="ghost" disabled={choosing} onclick={chooseOutput}><FolderOpen/>{$_('topbar.outputfolder.tooltip')}</Button>
+    {#if store.outputDirectory}<Button variant="ghost" disabled={choosing} onclick={resetOutput}>{$_('conversion.resetOutput')}</Button>{/if}
+    <label class="text-xs flex items-center gap-1"><input type="checkbox" disabled={savingOffline} checked={store.offlineMode} onchange={changeOffline}/>{$_('topbar.offline.pure.title')}</label>
+    <select aria-label={$_('conversion.language')} value={$locale} onchange={e => locale.set(e.currentTarget.value)} class="text-sm border rounded p-1">
+      <option value="en-us">English</option><option value="zh-cn">简体中文</option>
+    </select>
+  </div>
+  <div class="no-drag ml-auto flex">
+    <Button size="icon" variant="ghost" aria-label={$_('topbar.minimize.tooltip')} onclick={() => window.electronAPI.minimizeApp()}><Minus/></Button>
+    <Button size="icon" variant="ghost" aria-label={$_('topbar.close.tooltip')} onclick={() => window.electronAPI.closeApp()}><X/></Button>
+  </div>
+</div>
+<style>.no-drag { -webkit-app-region: no-drag; }</style>

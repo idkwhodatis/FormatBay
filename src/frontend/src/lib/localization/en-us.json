@@ -1,96 +1,122 @@
 {
-    "topbar":{
-        "file":{
-            "title":"File"
-        },
-        "edit":{
-            "title":"Edit"
-        },
-        "view":{
-            "title":"View"
-        },
-        "settings":{
-            "title":"Settings"
-        },
-        "about":{
-            "title":"About"
-        },
-        "outputfolder":{
-            "tooltip":"Output Folder"
-        },
-        "minimize":{
-            "tooltip":"Minimize"
-        },
-        "close":{
-            "tooltip":"Close"
-        },
-        "offline":{
-            "pure":{
-                "title":"Pure Offline",
-                "titlefull":"Pure Offline Mode",
-                "description":"All external resources are ignored, no internet access is used."
-            },
-            "download":{
-                "title":"Download Only",
-                "titlefull":"Download Only Mode",
-                "description":"External resources (e.g., links, images) are normally fetched."
-            }
-        }
+  "topbar": {
+    "file": {
+      "title": "File"
     },
-    "left":{
-        "formats":{
-            "title":"Formats",
-            "favorite":{
-                "title":"Favorite"
-            },
-            "video":{
-                "title":"Video"
-            },
-            "audio":{
-                "title":"Audio"
-            },
-            "ocr":{
-                "title":"OCR"
-            },
-            "text":{
-                "title":"Text"
-            },
-            "data":{
-                "title":"Data"
-            },
-            "certificate":{
-                "title":"Certificate"
-            }
-        },
-        "tasks":{
-            "title":"Tasks",
-            "add":{
-                "tooltip":"Add File",
-                "warning":"Please Select An Output Format First"
-            },
-            "addfolder":{
-                "tooltip":"Add Folder"
-            },
-            "start":{
-                "tooltip":"Start Selection"
-            },
-            "stop":{
-                "tooltip":"Stop Selection"
-            },
-            "delete":{
-                "tooltip":"Delete Selection"
-            },
-            "startall":{
-                "tooltip":"Start All"
-            },
-            "stopall":{
-                "tooltip":"Stop All"
-            }
-        }
+    "edit": {
+      "title": "Edit"
     },
-    "right":{
-        "hintformat":"Select An Output Format To Get Started",
-        "hinttask":"Add New Files Or Select A Task To Proceed",
-        "topbar":"Converting To:"
+    "view": {
+      "title": "View"
+    },
+    "settings": {
+      "title": "Settings"
+    },
+    "about": {
+      "title": "About"
+    },
+    "outputfolder": {
+      "tooltip": "Output Folder"
+    },
+    "minimize": {
+      "tooltip": "Minimize"
+    },
+    "close": {
+      "tooltip": "Close"
+    },
+    "offline": {
+      "pure": {
+        "title": "Pure Offline",
+        "titlefull": "Pure Offline Mode",
+        "description": "All external resources are ignored, no internet access is used."
+      },
+      "download": {
+        "title": "Download Only",
+        "titlefull": "Download Only Mode",
+        "description": "External resources (e.g., links, images) are normally fetched."
+      }
     }
+  },
+  "left": {
+    "formats": {
+      "title": "Formats",
+      "favorite": {
+        "title": "Favorite"
+      },
+      "video": {
+        "title": "Video"
+      },
+      "audio": {
+        "title": "Audio"
+      },
+      "ocr": {
+        "title": "OCR"
+      },
+      "text": {
+        "title": "Text"
+      },
+      "data": {
+        "title": "Data"
+      },
+      "certificate": {
+        "title": "Certificate"
+      }
+    },
+    "tasks": {
+      "title": "Tasks",
+      "add": {
+        "tooltip": "Add File",
+        "warning": "Please Select An Output Format First"
+      },
+      "addfolder": {
+        "tooltip": "Add Folder"
+      },
+      "start": {
+        "tooltip": "Start Selection"
+      },
+      "stop": {
+        "tooltip": "Stop Selection"
+      },
+      "delete": {
+        "tooltip": "Delete Selection"
+      },
+      "startall": {
+        "tooltip": "Start All"
+      },
+      "stopall": {
+        "tooltip": "Stop All"
+      }
+    }
+  },
+  "right": {
+    "hintformat": "Select An Output Format To Get Started",
+    "hinttask": "Add New Files Or Select A Task To Proceed",
+    "topbar": "Converting To:"
+  },
+  "conversion": {
+    "targetFirst": "Choose a target, then add your files",
+    "audioScope": "Local video or audio → audio. Video is not retained. Each file gets its own conversion plan.",
+    "chooseTarget": "Choose an audio target on the left. FormatBay will find an available conversion route.",
+    "importHint": "Folders: first level only, up to 200 files.",
+    "unavailable": "Unavailable",
+    "installTools": "Install FFmpeg and ffprobe from their official source, add them to PATH, then restart. Tools are never downloaded automatically.",
+    "route": "Conversion route",
+    "output": "Output",
+    "besideInput": "Beside the input, with a new name. Never overwrites the original.",
+    "noTasks": "No tasks yet. Choose a target and add files.",
+    "progress": "Conversion progress",
+    "language": "Language",
+    "noFavorites": "No favorites yet.",
+    "status": {
+      "ready": "Ready",
+      "queued": "Queued",
+      "running": "Converting",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "blocked": "Unavailable route"
+    },
+    "outputHint": "Output folder applies to newly added tasks. All current conversions run locally, even when Pure Offline is off.",
+    "resetOutput": "Reset output"
+  }
 }

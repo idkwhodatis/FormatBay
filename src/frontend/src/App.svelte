@@ -1,101 +1,95 @@
 <script>
-  import "./app.css";
-  import * as Tabs from "$lib/components/ui/tabs/index.js";
-  import {Button} from "$lib/components/ui/button/index.js";
-  import {Separator} from "$lib/components/ui/separator/index.js";
-  import {X} from "@lucide/svelte";
-  import Loader2Icon from "@lucide/svelte/icons/loader-2";
-  import "$lib/localization/i18n.js";
-  import {_} from 'svelte-i18n'
-  import Topbar from "$lib/components/Topbar.svelte";
-  import Formats from "$lib/views/Formats.svelte";
-  import Tasks from "$lib/views/Tasks.svelte"
-
-  import {onMount} from "svelte";
-  import "$lib/store.svelte.js"
-  import store,{consts} from "$lib/store.svelte.js"
-  import {locale} from "svelte-i18n"
-
-  onMount(async ()=>{
-    const initData=await window.electronAPI.getInitData();
-    Object.assign(consts,initData);
-
-    const storedFavorite=await window.store.get("favorite") ?? {};
-    const favorite=Object.fromEntries(
-      Object.entries(consts.outputFormats).map(([type,format])=>[
-        type,
-        Object.fromEntries(
-          format.map(f=>[f,storedFavorite?.[type]?.[f] ?? false])
-        )
-      ])
-    );
-    await window.store.set("favorite",favorite);
-    store.favorite=favorite;
-
-    const storedOfflineMode=await window.store.get("offlineMode") ?? true;
-    store.offlineMode=storedOfflineMode;
-
-    // locale.set("zh-cn");
-    locale.set("en-us");
-    locale.subscribe(()=>console.log('locale change'));
-
-    store.init=true;
+  import './app.css';
+  import '$lib/localization/i18n.js';
+  import {onMount} from 'svelte';
+  import {_, locale} from 'svelte-i18n';
+  import * as Tabs from '$lib/components/ui/tabs/index.js';
+  import {Button} from '$lib/components/ui/button/index.js';
+  import Topbar from '$lib/components/Topbar.svelte';
+  import Formats from '$lib/views/Formats.svelte';
+  import Tasks from '$lib/views/Tasks.svelte';
+  import store, {consts, updateTasks, addFiles} from '$lib/store.svelte.js';
+  let bootError = $state('');
+  let selected = $derived(store.tasks[store.selectedTask]);
+  onMount(() => {
+    let disposed = false;
+    const unsubscribe = window.electronAPI?.onTasks(updateTasks);
+    (async () => {
+      if (!window.electronAPI) throw new Error('Open FormatBay in Electron, not a browser.');
+      const data = await window.electronAPI.getInitData();
+      if (disposed) return;
+      Object.assign(consts, data);
+      store.tools = data.tools ?? [];
+      store.outputDirectory = data.outputDirectory;
+      updateTasks(data.tasks);
+      const saved = await window.store.get('favorite') ?? {};
+      store.favorite = Object.fromEntries(Object.entries(data.outputFormats).map(([type, formats]) =>
+        [type, Object.fromEntries(formats.map(format => [format, saved[type]?.[format] === true]))]));
+      store.offlineMode = await window.store.get('offlineMode') ?? true;
+      locale.set(navigator.language.toLowerCase().startsWith('zh') ? 'zh-cn' : 'en-us');
+      store.init = true;
+    })().catch(error => { bootError = error.message; });
+    return () => { disposed = true; unsubscribe?.(); };
   });
 </script>
 
-<main>
+<main class="h-screen flex flex-col bg-background text-foreground">
   {#if store.init}
-    <div class="h-screen flex flex-col">
-      <Topbar/>
-
-      <div class="flex flex-1 h-full w-full">
-        <div class="h-full w-1/3 border-r border-gray-300">
-          <Tabs.Root value="formats" class="h-full w-full">
-            <Tabs.List class="w-full">
-              <Tabs.Trigger value="formats" class="rounded-sm data-[state=active]:text-secondary data-[state=active]:bg-primary">{$_("left.formats.title")}</Tabs.Trigger>
-              <Tabs.Trigger value="tasks" class="rounded-sm data-[state=active]:text-secondary data-[state=active]:bg-primary">{$_("left.tasks.title")}</Tabs.Trigger>
-            </Tabs.List>
-            <Tabs.Content value="formats" class="h-full p-3 pt-0 pr-0">
-              <Formats/>
-            </Tabs.Content>
-            <Tabs.Content value="tasks">
-              <Tasks/>
-            </Tabs.Content>
-          </Tabs.Root>
+    <Topbar/>
+    {#if store.error}<div role="alert" class="p-3 bg-red-50 text-red-800 border-b">{store.error}</div>{/if}
+    <div class="flex flex-1 min-h-0">
+      <aside class="w-2/5 max-w-lg border-r flex flex-col min-h-0">
+        <div class="p-3 border-b flex flex-wrap gap-2">
+          <Button disabled={!store.selectedFormat || store.busy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
+          <Button variant="outline" disabled={!store.selectedFormat || store.busy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
+          <p class="text-xs text-muted-foreground w-full">{$_('conversion.importHint')}</p>
         </div>
-
-        <div class="w-2/3">
-          {#if store.selectedFormat!=null}
-            <div class="flex flex-row items-center gap-2">
-              <div class="font-bold pl-4">
-                {$_("right.topbar")}
-              </div>
-              {$_("left.formats."+store.selectedFormat[0].toLowerCase()+".title")}.{store.selectedFormat[1]}
-              <Button onclick={()=>{store.selectedFormat=null}} variant="ghost" class="rounded-none active:bg-gray-200">
-                <X/>
-              </Button>
-            </div>
-            <Separator/>
-          {/if}
-
-          {#if store.selectedFormat==null&&store.selectedTask==null}
-            <div class="flex w-full h-full justify-center items-center text-2xl relative">
-              {$_("right.hintformat")}
-            </div>
-          {:else if store.selectedTask==null}
-            <div class="flex w-full h-full justify-center items-center text-2xl relative">
-              {$_("right.hinttask")}
-            </div>
-          {:else}
-            sb
-          {/if}
-        </div>
-      </div>
+        <Tabs.Root bind:value={store.tab} class="flex-1 min-h-0">
+          <Tabs.List class="w-full">
+            <Tabs.Trigger value="formats">{$_('left.formats.title')}</Tabs.Trigger>
+            <Tabs.Trigger value="tasks">{$_('left.tasks.title')} ({Object.keys(store.tasks).length})</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="formats" class="overflow-auto p-3"><Formats/></Tabs.Content>
+          <Tabs.Content value="tasks" class="overflow-auto"><Tasks/></Tabs.Content>
+        </Tabs.Root>
+      </aside>
+      <section class="flex-1 min-w-0 overflow-auto p-6 space-y-6">
+        <header>
+          <p class="text-sm text-muted-foreground">{$_('conversion.targetFirst')}</p>
+          <h1 class="text-2xl font-semibold mt-1">{store.selectedFormat ? `.${store.selectedFormat[1]}` : $_('right.hintformat')}</h1>
+          <p class="mt-2 text-sm text-muted-foreground">{$_('conversion.audioScope')}</p>
+        </header>
+        {#each store.tools.filter(tool => !tool.available) as tool}
+          <div role="status" class="p-4 border rounded-lg bg-amber-50 text-amber-950">
+            <strong>{tool.id}: {$_('conversion.unavailable')}</strong><p class="text-sm">{tool.detail}</p>
+            <p class="text-sm mt-2">{$_('conversion.installTools')}</p>
+          </div>
+        {/each}
+        {#if selected}
+          <article class="border rounded-lg p-5 space-y-4">
+            <div class="flex justify-between gap-3"><h2 class="font-semibold break-all">{selected.inputPath.split(/[\\/]/).pop()}</h2><span>{$_(`conversion.status.${selected.status}`)}</span></div>
+            <p class="text-xs text-muted-foreground break-all">{selected.inputPath}</p>
+            <h3 class="font-medium">{$_('conversion.route')} → .{selected.target.format}</h3>
+            {#if selected.plan}
+              <ol class="space-y-3">
+                {#each selected.plan.steps as step, i}
+                  <li class="p-3 bg-muted rounded"><span class="font-medium">{i + 1}. {step.label}</span><span class="text-sm text-muted-foreground block">{step.toolId} → {step.output?.format ?? step.output?.container ?? step.output?.kind ?? ''}</span></li>
+                {/each}
+              </ol>
+              {#each selected.plan.warnings ?? [] as warning}<p class="text-sm text-amber-800">{warning}</p>{/each}
+            {/if}
+            {#if selected.error}<p role="alert" class="text-red-700 break-words">{selected.error}</p>{/if}
+            {#if selected.status === 'running'}<progress class="w-full" max="100" value={selected.progress ?? 0}></progress>{/if}
+            {#if selected.outputPath}<p class="text-sm break-all">{$_('conversion.output')}: {selected.outputPath}</p>{/if}
+          </article>
+        {:else}
+          <p class="py-12 text-muted-foreground">{store.selectedFormat ? $_('right.hinttask') : $_('conversion.chooseTarget')}</p>
+        {/if}
+        <p class="text-xs text-muted-foreground">{$_('conversion.outputHint')}</p>
+        <p class="text-xs text-muted-foreground break-all">{$_('conversion.output')}: {store.outputDirectory ?? $_('conversion.besideInput')}</p>
+      </section>
     </div>
   {:else}
-    <div class="h-screen w-screen flex flex-col items-center justify-center gap-2 text-xl">
-      <Loader2Icon class="animate-spin w-12 h-12" />
-      <span>Loading...</span>
-    </div>
+    <div class="m-auto p-8" role="status">{bootError || 'Loading FormatBay…'}</div>
   {/if}
 </main>

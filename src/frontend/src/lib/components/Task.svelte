@@ -1,50 +1,11 @@
 <script>
-import {Play,ListEnd,Pause,Check} from "@lucide/svelte";
-import {Progress} from "$lib/components/ui/progress/index.js";
-import {cn,truncatePath} from "$lib/utils.js"
-import {_} from 'svelte-i18n'
-
-import store from "$lib/store.svelte.js"
-
-let {id,task}=$props();
-
-let Status=$derived.by(()=>{
-  switch(task.status){
-    case "started":
-      return Play;
-    case "queued":
-      return ListEnd;
-    case "stopped":
-      return Pause;
-    case "done":
-      return Check;
-  }
-})
-
-let selected=$derived(id===store.selectedTask);
-function selectTask(){
-  if(selected){
-    store.selectedTask=null;
-  }else{
-    store.selectedTask=id;
-  }
-}
+  import {_} from 'svelte-i18n';
+  import store from '$lib/store.svelte.js';
+  let {task} = $props();
 </script>
-
-<button onclick={selectTask} class={cn("flex flex-col relative bg-white w-full h-20 flex border-b hover:bg-gray-100 active:bg-gray-200",selected ? "bg-gray-200":"")}>
-  <div class="flex flex-row pt-2 pl-2 gap-1">
-    <Status/>
-    {task.title}
-  </div>
-  <div class="flex flex-row pl-2 pr-2">
-    {truncatePath(task.path)}
-    <div class="ml-auto flex">
-      {$_("left.formats."+task.type.toLowerCase()+".title")}.{task.format}
-    </div>
-  </div>
-  {#if task.status==="started"}
-    <div class="p-2">
-      <Progress value={33}/>
-    </div>
-  {/if}
+<button onclick={() => { store.selectedTask = task.id; }} aria-pressed={store.selectedTask === task.id}
+  class="w-full text-left border-b p-3 hover:bg-muted focus-visible:outline-2" class:bg-muted={store.selectedTask === task.id}>
+  <div class="flex justify-between gap-2"><span class="font-medium truncate">{task.inputPath.split(/[\\/]/).pop()}</span><span>.{task.target.format}</span></div>
+  <div class="text-xs text-muted-foreground mt-1">{$_(`conversion.status.${task.status}`)}</div>
+  {#if task.status === 'running'}<progress aria-label={$_('conversion.progress')} class="w-full mt-2" max="100" value={task.progress ?? 0}></progress>{/if}
 </button>

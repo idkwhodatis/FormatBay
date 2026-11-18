@@ -1,86 +1,104 @@
 # AGENTS.md — FormatBay Agent Index
 
-> Offline-first, AI-era entry point for human and AI contributors.
-> Source of truth for how this repo is structured and how to work in it.
+FormatBay is an offline-first desktop converter. The conversion-graph branch
+implements target-first audio conversion from local video/audio files. Generic
+multi-tool graph planning is tested; the production adapter is FFmpeg only.
 
-## What Is This Repo?
+## Stack and commands
 
-FormatBay is an offline-first desktop format converter + OCR tool (`README.md:2`).
-Current state (Sep 2026): **UI shell only**. Basic layout is done, no real
-conversion logic exists yet. See `Agents/SCOPE.md` for done vs. planned.
+- Electron 45, electron-store 12; sandboxed/context-isolated renderer.
+- Svelte 5, Vite 8, Tailwind 4, shadcn-svelte/bits-ui. Bun manages both lockfiles.
+- Node >=22.12; latest verified dependency snapshot: `Agents/UPGRADE.md`.
+- Install: `bun install` and `cd src/frontend && bun install`.
+- Build: `bun run build`; start built app: `bun run start`.
+- Development: `cd src/frontend && bun run dev`, then root `bun run dev`.
+- Tests: `bun run test` (Node test runner). FFmpeg integration tests skip explicitly
+  if system FFmpeg/ffprobe is unavailable; no binaries are auto-downloaded.
+- FFmpeg and ffprobe must be installed on PATH. Restart after installing them.
 
-## Stack
+## Contributor map and rules
 
-- Shell: Electron 44 (Chromium 152, Node 24) (`src/main.js`, `src/preload.js`)
-- Frontend: Svelte 5.57 + Vite 8 (Rolldown) + Tailwind CSS 4.3 + shadcn-svelte (bits-ui 2.19) in `src/frontend/`
-- Package manager: Bun (root `bun.lock` + `src/frontend/bun.lock`)
-- Persistence: `electron-store` via IPC
-- i18n: `svelte-i18n`, locales `en-us` / `zh-cn`
-- Claimed but NOT integrated: FFmpeg, Tesseract.js (`README.md:27-28`)
+Read `Agents/ARCHITECTURE.md`, `Agents/SCOPE.md`, `Agents/IMPLEMENTATION.md` before
+changes; keep them synchronized. Check status and don't overwrite unrelated work.
 
-## Agent Docs Map
+1. Runtime formats come from adapter discovery, not `supported.txt`, README
+   wishes or the historical `src/backend/consts/initData.json` catalog.
+2. Never commit `config.json`; settings use electron-store's user-data directory.
+3. Keep en-us / zh-cn locale keys synchronized. Svelte 5 runes only.
+4. Do not hand-edit generated `src/frontend/src/lib/components/ui/*` components.
+5. Main/preload must change together. Preload is explicitly CommonJS (`.cjs`).
+6. `consts/consts.json` remains invalid, unused historical data; do not import it.
+7. No shell command strings, renderer-provided paths/plans, network tools, or
+   silent overwrite. Backend owns probing, plans, execution and task identity.
 
-| File | Purpose |
-| ---- | ------- |
-| `Agents/ARCHITECTURE.md` | Process model, IPC contract, data flow, frontend tree |
-| `Agents/SCOPE.md` | What is done, what is stub/placeholder, roadmap |
-| `Agents/IMPLEMENTATION.md` | How to add formats, locales, IPC, tasks; conventions + pitfalls |
-| `Agents/UPGRADE.md` | Dependency upgrade snapshot (2026-09-05), deprecated list, migration checklists |
+## IPC contract
 
-Read the relevant file before changing code. Keep all three in sync with code changes.
+All invoke/send channels validate the current window's main frame and exact app
+URL. New windows/navigation and unrequested permissions are denied.
 
-## Quickstart (Two Processes, No Single Dev Command)
+| Channel | Direction | Payload/result |
+| --- | --- | --- |
+| app:initData | invoke | catalog, tool availability, tasks, outputDirectory |
+| app:close / app:minimize | send | no payload |
+| store:get / store:set | invoke | allowlisted favorite/offlineMode only |
+| conversion:add | invoke | target {kind:audio,format}, folder boolean; native dialog selects paths |
+| conversion:outputDirectory | invoke | native output-directory picker |
+| conversion:resetOutputDirectory | invoke | restore beside-input output for future imports |
+| conversion:action | invoke | start/cancel/remove + backend task ID |
+| conversion:tasks | push | task snapshots, no privileged event exposed |
 
-There is no unified `dev` script. `dev.bat` only opens terminals, it runs nothing.
+## File ownership
 
-```powershell
-# Terminal 1 — frontend (Vite dev server on http://localhost:5173)
-Set-Location src/frontend; bun install; bun run dev
+- `src/main.js`, `src/preload.cjs`: lifecycle, native dialogs, IPC and settings.
+- `src/backend/conversion/`: planner, FFmpeg adapter, process wrapper, service.
+- `src/frontend/src/lib/store.svelte.js`: renderer snapshots/actions.
+- `src/frontend/src/App.svelte`, views/components: target-first conversion UI.
+- `test/`: planner, process, service and real-media integration checks.
 
-# Terminal 2 — Electron shell (expects Vite already running)
-Set-Location .; bun install; bun run dev
-```
+## Approved Conversion-Graph Implementation Plan (2026-11-18)
 
-Root `package.json:8` → `electron .`. Frontend `src/frontend/package.json:7` → `vite`.
-`src/main.js:22` hardcodes `win.loadURL("http://localhost:5173/")` — prod `loadFile`
-path is commented out. DevTools opens unconditionally (`src/main.js:23`).
+The target-first workflow remains: choose a desired output, add input files,
+inspect the proposed route and warnings, then start. This is a **capability
+multigraph + route planner**, not topological sorting. Global capability graphs
+may contain cycles; an individual executable plan must be bounded and acyclic.
 
-## IPC Contract (Do Not Break)
+### Architecture and invariants
 
-Defined in `src/main.js:29-48` + exposed in `src/preload.js:3-16`:
+- Backend owns the registry, file probing, planner, tool adapters and serial task
+  executor. Renderer displays snapshots and sends narrow commands, never shell
+  strings or arbitrary input paths. Native dialogs authorize selected files.
+- Nodes describe actual artifact states (media kind, container, codecs/streams),
+  not merely extensions. Each edge declares its real input predicate, output
+  state, tool identity/version/availability, operation, quality cost and warnings.
+  Do not form a false Cartesian product of a tool's input/output format lists.
+- Prefer preservation over fewer steps: remux/copy when equivalent, lossless
+  intermediate formats when chaining, then fewer steps. Lossless output does not
+  restore quality already lost. Reject a silent video for an audio target.
+- Probe actual streams and verify each produced intermediate and final file.
+  Filter unavailable tools and network operations under offline policy before
+  planning. Planning is deterministic and bounded, with no graph database or LLM.
+- Tool processes use argument arrays, no shell. Restrict media protocols to local
+  files, keep sandbox/context isolation, validate IPC senders and payloads.
+- Each task owns temporary files, progress, cancellation and cleanup. Never
+  overwrite inputs or existing outputs. Publish final output only after successful
+  verification. No automatic downloads or binary installation.
 
-| Channel | Direction | Payload |
-| ------- | --------- | ------- |
-| `app:initData` | main → renderer (push on `did-finish-load`) | contents of `src/backend/consts/initData.json` |
-| `app:close` | renderer → main (`send`) | — quits app |
-| `app:minimize` | renderer → main (`send`) | — minimizes window |
-| `store:get` | renderer → main (`invoke`) | `(key)` → persisted value |
-| `store:set` | renderer → main (`invoke`) | `(key, value)` → void |
+### Phases and acceptance criteria
 
-Frontend access is only via `window.electronAPI.*` and `window.store.*`.
-`contextIsolation:true, sandbox:true` (`src/main.js:13-15`) — no direct Node in renderer.
+1. Upgrade every declared dependency to the current stable registry release,
+   regenerate Bun locks, and resolve compatibility/build failures first.
+2. Implement pure registry/planner with fake tool A/B tests proving video A to
+   audio F to audio L, including cycles, codec mismatch, no audio, missing tools,
+   quality preferences and offline rejection.
+3. Add real ffprobe/FFmpeg adapter and serial executor, explicit tool discovery,
+   output management, cancellation, failure cleanup and integration tests.
+4. Wire target-first catalog, file selection, live task actions and route/warnings
+   into the existing Svelte UI; remove dummy tasks and the placeholder detail pane.
+5. Independent review and final checks. Commit/push only outside the owner's
+   Toronto working hours (Mon 08:30–18:00, Tue–Fri 09:00–18:00); no merge.
 
-## Golden Rules for Agents
-
-1. **Canonical format list** is `src/backend/consts/initData.json:2-9`. Do not treat
-   `supported.txt` or `README.md` roadmap as spec — they are aspirational.
-2. **Never commit `config.json`.** It is gitignored (`.gitignore:37`) but a sample
-   copy exists at repo root. Runtime persistence lives in `electron-store`.
-3. **Keep `en-us.json` / `zh-cn.json` keys in sync.** Key pattern:
-   `topbar.*`, `left.formats.*`, `left.tasks.*`, `right.*`.
-4. **Svelte 5 runes only** (`$state`, `$derived`, `$props`). Alias `$lib` →
-   `src/frontend/src/lib` (`src/frontend/vite.config.js:7-11`).
-5. **Do not hand-edit `src/frontend/src/lib/components/ui/*`.** Generated shadcn-svelte.
-6. **Known-broken, docs-only flags (do not silently depend on these):**
-   - `src/backend/consts/consts.json:10` is invalid JSON — nothing imports it today.
-   - Right detail panel is placeholder (`src/frontend/src/App.svelte:90` renders `sb`).
-   - `src/frontend/src/lib/views/Tasks.svelte:19-22` hardcodes 4 dummy tasks.
-   - `addFile()` builds dialog options but never opens a dialog (`Tasks.svelte:24-43`).
-   - All menubar menus show identical placeholder items (`Topbar.svelte:19-88`).
-
-## File Ownership
-
-- Electron lifecycle/window: `src/main.js`
-- Bridge surface: `src/preload.js` (edit with `main.js` together)
-- Global UI state: `src/frontend/src/lib/store.svelte.js`
-- Format/task UI: `src/frontend/src/lib/views/`, `src/frontend/src/lib/components/Format.svelte`, `Task.svelte`, `Topbar.svelte`
+Initial deliverable deliberately focuses on real audio outputs from audio/video
+inputs, with a generic multi-tool planner. A second production adapter, OCR/data,
+video output encoding, multi-output/fan-out, packaging and a global topology
+visualizer remain future work. Do not advertise a format until its adapter can
+actually produce it. Report unrun native UI/platform checks explicitly.

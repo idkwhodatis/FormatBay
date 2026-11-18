@@ -18,21 +18,21 @@
 
 <ScrollArea class="flex h-full w-full pr-3">
   <Accordion.Root type="multiple">
-    <Accordion.Item>
+    <Accordion.Item value="favorites">
       <Accordion.Trigger class="pt-3 pb-3">{$_("left.formats.favorite.title")}</Accordion.Trigger>
       <Accordion.Content>
         <div class="flex flex-wrap gap-x-2 gap-y-4">
           {#each favedFormat as i}
-            <Format type={i[0]} format={i[1]} showInFav="true"/>
+            <Format type={i[0]} format={i[1]} showInFav={true}/>
             <br/>
           {:else}
-            No favorite item.
+            {$_('conversion.noFavorites')}
           {/each}
         </div>
       </Accordion.Content>
     </Accordion.Item>
     {#each Object.entries(consts.outputFormats) as [type,format]}
-      <Accordion.Item>
+      <Accordion.Item value={type}>
         <Accordion.Trigger class="pt-3 pb-3">{$_("left.formats."+type.toLowerCase()+".title")}</Accordion.Trigger>
         <Accordion.Content>
           <div class="flex flex-wrap gap-x-2 gap-y-4">

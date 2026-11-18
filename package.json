@@ -5,13 +5,22 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "electron .",
-    "update": "bunx npm-check-updates -ui"
+    "dev": "electron . --dev",
+    "update": "bunx npm-check-updates -ui",
+    "start": "electron .",
+    "test": "node --test",
+    "build": "cd src/frontend && bun run build"
   },
   "devDependencies": {
-    "electron": "^44.2.0"
+    "electron": "^45.3.4"
   },
   "dependencies": {
-    "electron-store": "^11.0.2"
-  }
+    "electron-store": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "trustedDependencies": [
+    "electron"
+  ]
 }

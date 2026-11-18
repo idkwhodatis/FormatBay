@@ -1,131 +1,56 @@
-# ARCHITECTURE.md — FormatBay System Architecture
+# FormatBay architecture
 
-## 1. Process Model (Electron)
+## Trust boundary
 
-```
-┌──────────────┐   IPC (send/invoke + push)   ┌─────────────────────┐
-│ Electron     │ ◄──────────────────────────► │ Preload bridge      │
-│ Main         │                               │ src/preload.js      │
-│ src/main.js  │                               │ contextBridge only  │
-└──────┬───────┘                               └──────────┬──────────┘
-       │ loads                                         │ exposes
-       │ http://localhost:5173                         │ window.electronAPI
-       ▼                                               │ window.store
-┌──────────────────────────────────────────────────────▼──────────┐
-│ Renderer: Svelte 5 + Vite dev server (src/frontend/)            │
-│ App.svelte → Topbar + Tabs(Formats | Tasks) + right detail pane │
-└─────────────────────────────────────────────────────────────────┘
-```
+`src/main.js` creates a sandboxed, context-isolated Electron renderer without
+Node integration. `src/preload.cjs` exposes narrow invokes and task subscriptions.
+IPC verifies sender webContents, top-level frame and exact entry URL. Dev mode
+requires `--dev`; normal start loads the Vite build with relative assets. Settings
+are restricted to favorites/offline preference in electron-store's user-data dir.
+Native dialogs select input files and output directories; renderer cannot submit
+arbitrary paths, command strings or executable plans. Import is bounded to 200
+files per dialog/500 tasks, folders are non-recursive.
 
-Window config (`src/main.js:9-24`): `1280x980`, `titleBarStyle:"hidden"`,
-`contextIsolation:true, sandbox:true`, preload at `src/preload.js:16`.
-Renderer has **no Node access** — everything privileged goes through IPC.
+## Conversion core
 
-`src/index.html` (root) is a stale Electron hello-world. It is **not** loaded;
-`win.loadFile` is commented out (`src/main.js:21`). Dev entry is Vite only.
+- `conversion/planner.js`: pure bounded graph search. State includes kind, format,
+  audio codec and stream presence. Capability predicates define valid edges;
+  availability/offline policy filters them. Quality cost precedes step count.
+  Route steps snapshot capability ID, tool/version, input/output and warnings.
+- `conversion/ffmpeg.js`: discovers FFmpeg/ffprobe and actual encoders, decoders,
+  muxers. Supported output targets are WAV/FLAC/MP3/AAC/OGG/Opus when available.
+  Probes local regular media files; excludes playlist/network protocols. Copies
+  matching audio codecs where possible, otherwise encodes the first audio stream.
+  Explicit warnings cover removed streams/metadata, lossy encoding and precision.
+- `conversion/process.js`: argv-only spawn, no shell; cancellation, timeout and
+  bounded diagnostics. Actual conversion progress is parsed from FFmpeg.
+- `conversion/service.js`: backend-owned tasks and serial queue. Imports probe and
+  plan; execution rechecks file identity and route. Each step is probed and fully decoded with fail-on-error; known audio durations
+  are checked with a padding tolerance before publication.
+  Temps live on the output volume. Final publication uses exclusive hard links,
+  never overwriting source or existing destinations. Filesystems without hard-link
+  support fail explicitly. Cancellation/failure cleans temps; close aborts work.
 
-## 2. Backend (`src/backend/`)
+## Task lifecycle and UI
 
-Almost entirely stub:
+Ready → queued → running → done/failed/cancelled. Unreachable/bad inputs become
+blocked. Remove/re-add to retry or replan. Output-directory selection applies to
+new imports, default beside input (reset available in the toolbar). Running-task removal requires cancellation.
+Task snapshots include ID, inputPath, target, plan, status, progress, output/error.
 
-- `consts/initData.json` — **canonical runtime constants**, pushed to renderer
-  on every load via `app:initData` (`src/main.js:6,29-31`):
-  ```json
-  { "outputFormats": { "Video": [...8], "Audio": [...4], "OCR": [...2],
-    "Text": [...2], "Data": [...5], "Certificate": [...2] },
-    "locales": { "en-us": "English", "zh-cn": "简体中文" } }
-  ```
-- `consts/consts.json` — **broken, unused**. Line 10 (`"mkv","webm",...` without
-  keys) is invalid JSON. Nothing imports it. Do not import until fixed.
-- `store.js:1-9` — unused frontend-shape stub (`lastPath`, `cachedInputFormat`).
-  Real persistence is `electron-store` in main (`src/main.js:41-48`,
-  `cwd:app.getAppPath()`).
+Renderer keeps target selection independent from task target. Choose a target,
+add files, inspect route/warnings, then start. Tasks toolbar provides individual
+and batch start/cancel, with removal of nonrunning tasks. No fake tasks. Favorites,
+language choice and offline preference remain. Tools missing on PATH are shown
+explicitly. All implemented routes are local, regardless of offline switch.
 
-## 3. Bridge (`src/preload.js:3-16`)
+## Scope boundaries
 
-```js
-window.electronAPI.getInitData() // once("app:initData") → Promise<initData>
-window.electronAPI.closeApp()    // send("app:close")
-window.electronAPI.minimizeApp() // send("app:minimize")
-window.store.get(key)            // invoke("store:get", key)
-window.store.set(key, value)     // invoke("store:set", key, value)
-```
+The graph is generic and supports A→F→L across tools in unit tests; production
+currently has one real adapter and generally selects a direct FFmpeg path. No
+OCR/data/video output adapter, binary bundling, automatic installer, package/sign
+pipeline, durable queue/resume, drag-drop, recursive import or topology visualizer.
 
-`getInitData` uses `ipcRenderer.once` — resolves only on first load.
-Calling it twice hangs the second call.
-
-## 4. Frontend (`src/frontend/src/`)
-
-Entry: `main.js:1-9` mounts `App.svelte` into `#app`. `app.css` is Tailwind 4.
-
-### 4.1 Boot sequence (`App.svelte:19-43`)
-
-1. `await window.electronAPI.getInitData()` → `Object.assign(consts, initData)`.
-2. `await window.store.get("favorite")` → build favorite map from
-   `consts.outputFormats` (default `false`), write back, assign to
-   `store.favorite`.
-3. `await window.store.get("offlineMode") ?? true` → `store.offlineMode`.
-4. `locale.set("en-us")` (hardcoded, overrides navigator), then `store.init=true`.
-5. Until `init`, UI shows spinner (`App.svelte:96-99`).
-
-### 4.2 Global state (`lib/store.svelte.js:1-11`)
-
-```js
-store = $state({ init:false, offlineMode:true, favorite:[],
-                 tasks:{}, selectedFormat:null, selectedTask:null })
-export const consts = {}; // mutated in place by App.svelte
-```
-
-Note shape drift: initial `favorite:[]` becomes an object keyed by type after
-boot. `selectedFormat=[type, format]` pair; `selectedTask=id` string key into
-`tasks{}`.
-
-### 4.3 Layout (`App.svelte:48-93`)
-
-- Left `w-1/3`: `Tabs.Root(value="formats")` → `Formats.svelte` | `Tasks.svelte`.
-- Right `w-2/3`: header `Converting To: {Type}.{format}` + close `X` if
-  `selectedFormat`; body is 3-way conditional — no selection → `right.hintformat`,
-  format-only → `right.hinttask`, task selected → literal `sb` placeholder.
-
-### 4.4 Views and components
-
-- `lib/views/Formats.svelte` — Favorite accordion (derived from
-  `store.favorite===true`) + one accordion per `consts.outputFormats` entry.
-  Renders `Format.svelte` tiles.
-- `lib/components/Format.svelte` — tile button: click sets
-  `store.selectedFormat`; star toggles `store.favorite[type][format]` +
-  `window.store.set("favorite", snapshot)`.
-- `lib/views/Tasks.svelte` — toolbar (Add/AddFolder/Start/Stop/Delete/
-  StartAll/StopAll) + `ScrollArea` of `Task.svelte`. `addFile()` only toasts
-  when no format is selected; otherwise builds unused `options` object.
-- `lib/components/Task.svelte` — row button: icon by `status`
-  (`started→Play, queued→ListEnd, stopped→Pause, done→Check`),
-  `truncatePath(path)`, progress bar only when `started` (hardcoded `33`).
-- `lib/components/Topbar.svelte` — draggable `Menubar` (5 placeholder menus),
-  Output Folder button (no-op), offline `Switch` persisted on change
-  (`Topbar.svelte:99`), minimize/close wired to IPC. `.no-drag` CSS re-enables
-  clicks inside drag region.
-
-### 4.5 i18n (`lib/localization/`)
-
-`svelte-i18n`, `register('en-us'|'zh-cn', lazy import)` + `init({fallback:'en-us'})`
-in `i18n.js`. Both JSONs are 96 lines, keys in sync. Templates use
-`$_("left.formats."+type.toLowerCase()+".title")` — so category keys **must**
-stay lowercase-matching (`video, audio, ocr, text, data, certificate`).
-Additional keys: `left.tasks.*.tooltip`, `topbar.offline.pure|download.*`.
-
-### 4.6 Utils (`lib/utils.js`)
-
-`cn(...inputs)` (clsx + tailwind-merge), `getNextTaskID()` (monotonic counter,
-currently unused — dummy tasks use literal `0-3`), `truncatePath(path, l=35)`
-keeps ends with `.....` middle.
-
-## 5. Config, Build, Dependencies
-
-- Root `package.json`: `electron@37`, `electron-store@10`, scripts `dev→electron .`.
-- Frontend `package.json`: `svelte@5`, `vite@7`, `tailwindcss@4` (via
-  `@tailwindcss/vite`), `bits-ui`, `@lucide/svelte`, `svelte-i18n`,
-  `svelte-sonner`. Alias `$lib → src/lib` (`vite.config.js:7-11`).
-- No test runner, linter, formatter, CI, or packaging (no electron-builder/forge).
-- `config.json` at root is a sample of persisted shape (`favorite`, `offlineMode`);
-  gitignored, never commit changes to it.
+Encoding preserves channel count unless a declared encoder limit requires a
+downmix (MP3: 2, Opus: 8), which is explicitly warned. Stream-copy paths preserve
+channel count. The planned channel count is verified in the output.

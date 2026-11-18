@@ -251,3 +251,20 @@ lines (re-checked post-upgrade: `{}`). Changed files: `package.json` + `bun.lock
 - Full app: `electron .` vs live Vite dev stays alive 20s, no errors (killed after check; stray `electron` processes cleaned).
 - Cleanup: dead deps `@tailwindcss/forms`, `@tailwindcss/typography` removed (never imported); rebuild ✅ `3.44s`. `smoke-test.mjs` removed; `git status` shows only intended `package.json`/`bun.lock` + docs (+ pre-existing `App.svelte` mod).
 - Left for human eyeball pass: minimize/close click, star-toggle click, icon eyeball, menubar visuals.
+
+## Verified stable registry snapshot — 2026-11-18
+
+All declared packages were queried with `npm view <name> version`. Both Bun locks
+regenerated with Bun 1.4.4; Node 24.22.3 used for checks.
+
+- electron 45.3.4; electron-store 12.0.0 (Node >=22, Electron >=35).
+- Svelte 5.57.3; Vite 8.3.8; vite-plugin-svelte 7.3.1.
+- Tailwind CSS / @tailwindcss/vite 4.3.5; bits-ui 2.21.0.
+- @lucide/svelte 1.74.0; svelte-sonner 1.2.3.
+- tailwind-merge 3.7.0; tailwind-variants 4.0.2.
+- Unchanged latest: @internationalized/date 3.12.4, clsx 2.1.1,
+  mode-watcher 1.1.0, tw-animate-css 1.4.0, svelte-i18n 4.0.1.
+
+All declared peer ranges are compatible. Tailwind Variants 4's removed legacy
+configuration APIs are not used here. Electron 45 sandbox preload uses only the
+supported electron module, explicitly .cjs. Baseline upgraded frontend build passed.

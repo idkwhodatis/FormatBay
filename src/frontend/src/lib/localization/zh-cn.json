@@ -1,96 +1,122 @@
 {
-    "topbar":{
-        "file":{
-            "title":"文件"
-        },
-        "edit":{
-            "title":"编辑"
-        },
-        "view":{
-            "title":"查看"
-        },
-        "settings":{
-            "title":"设置"
-        },
-        "about":{
-            "title":"关于"
-        },
-        "outputfolder":{
-            "tooltip":"输出文件夹"
-        },
-        "minimize":{
-            "tooltip":"最小化"
-        },
-        "close":{
-            "tooltip":"关闭"
-        },
-        "offline":{
-            "pure":{
-                "title":"仅本地",
-                "titlefull":"仅本地模式",
-                "description":"忽略所有外部资源，不使用互联网连接。"
-            },
-            "download":{
-                "title":"仅下载",
-                "titlefull":"仅下载模式",
-                "description":"正常获取外部资源（例如链接、图片）。"
-            }
-        }
+  "topbar": {
+    "file": {
+      "title": "文件"
     },
-    "left":{
-        "formats":{
-            "title":"格式",
-            "favorite":{
-                "title":"收藏"
-            },
-            "video":{
-                "title":"视频"
-            },
-            "audio":{
-                "title":"音频"
-            },
-            "ocr":{
-                "title":"OCR"
-            },
-            "text":{
-                "title":"文本"
-            },
-            "data":{
-                "title":"数据"
-            },
-            "certificate":{
-                "title":"证书"
-            }
-        },
-        "tasks":{
-            "title":"队列",
-            "add":{
-                "tooltip":"添加文件",
-                "warning":"请先选择一种输出格式"
-            },
-            "addfolder":{
-                "tooltip":"添加文件夹"
-            },
-            "start":{
-                "tooltip":"开始选择项"
-            },
-            "stop":{
-                "tooltip":"停止选择项"
-            },
-            "delete":{
-                "tooltip":"删除选择项"
-            },
-            "startall":{
-                "tooltip":"开始所有"
-            },
-            "stopall":{
-                "tooltip":"停止所有"
-            }
-        }
+    "edit": {
+      "title": "编辑"
     },
-    "right":{
-        "hintformat":"选择一种输出格式来开始",
-        "hinttask":"添加新文件或选择一个任务",
-        "topbar":"转换到:"
+    "view": {
+      "title": "查看"
+    },
+    "settings": {
+      "title": "设置"
+    },
+    "about": {
+      "title": "关于"
+    },
+    "outputfolder": {
+      "tooltip": "输出文件夹"
+    },
+    "minimize": {
+      "tooltip": "最小化"
+    },
+    "close": {
+      "tooltip": "关闭"
+    },
+    "offline": {
+      "pure": {
+        "title": "仅本地",
+        "titlefull": "仅本地模式",
+        "description": "忽略所有外部资源，不使用互联网连接。"
+      },
+      "download": {
+        "title": "仅下载",
+        "titlefull": "仅下载模式",
+        "description": "正常获取外部资源（例如链接、图片）。"
+      }
     }
+  },
+  "left": {
+    "formats": {
+      "title": "格式",
+      "favorite": {
+        "title": "收藏"
+      },
+      "video": {
+        "title": "视频"
+      },
+      "audio": {
+        "title": "音频"
+      },
+      "ocr": {
+        "title": "OCR"
+      },
+      "text": {
+        "title": "文本"
+      },
+      "data": {
+        "title": "数据"
+      },
+      "certificate": {
+        "title": "证书"
+      }
+    },
+    "tasks": {
+      "title": "队列",
+      "add": {
+        "tooltip": "添加文件",
+        "warning": "请先选择一种输出格式"
+      },
+      "addfolder": {
+        "tooltip": "添加文件夹"
+      },
+      "start": {
+        "tooltip": "开始选择项"
+      },
+      "stop": {
+        "tooltip": "停止选择项"
+      },
+      "delete": {
+        "tooltip": "删除选择项"
+      },
+      "startall": {
+        "tooltip": "开始所有"
+      },
+      "stopall": {
+        "tooltip": "停止所有"
+      }
+    }
+  },
+  "right": {
+    "hintformat": "选择一种输出格式来开始",
+    "hinttask": "添加新文件或选择一个任务",
+    "topbar": "转换到:"
+  },
+  "conversion": {
+    "targetFirst": "先选目标格式，再添加文件",
+    "audioScope": "当前支持本地视频或音频 → 音频。视频画面不会保留；每个文件会单独分析转换路线。",
+    "chooseTarget": "选择左侧音频目标格式，系统会自动查找可用的转换路线。",
+    "importHint": "文件夹只导入第一层文件，最多 200 个。",
+    "unavailable": "工具不可用",
+    "installTools": "请从官方来源安装 FFmpeg 和 ffprobe 并加入 PATH，然后重启。不会自动下载工具。",
+    "route": "转换路线",
+    "output": "输出位置",
+    "besideInput": "原文件旁边，使用新的文件名，绝不覆盖原文件。",
+    "noTasks": "还没有任务。选择目标格式后添加文件。",
+    "progress": "转换进度",
+    "language": "语言",
+    "noFavorites": "暂无收藏。",
+    "status": {
+      "ready": "待开始",
+      "queued": "排队中",
+      "running": "转换中",
+      "done": "已完成",
+      "cancelled": "已取消",
+      "failed": "失败",
+      "blocked": "不可转换"
+    },
+    "outputHint": "输出文件夹设置用于之后添加的任务。所有当前转换均为本地离线操作。",
+    "resetOutput": "恢复默认输出"
+  }
 }
