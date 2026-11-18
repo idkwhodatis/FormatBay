@@ -100,7 +100,7 @@ may contain cycles; an individual executable plan must be bounded and acyclic.
    instructions; no merge without explicit authorization.
 
 Initial deliverable deliberately focuses on real audio outputs from audio/video
-inputs, with a generic multi-tool planner. OCR/data, video output encoding, multi-output/fan-out, packaging and a global topology
+inputs, with a generic multi-tool planner. OCR/data, video output encoding, multi-output/fan-out, signed installers and a global topology
 visualizer remain future work. Do not advertise a format until its adapter can
 actually produce it. Report unrun native UI/platform checks explicitly.
 
@@ -128,9 +128,22 @@ actually produce it. Report unrun native UI/platform checks explicitly.
   dialogs. Tests cover stale init/action replies and removal resurrection.
 - Linux CI remains non-GUI. `windows.yml` adds the same real-tool suite plus
   isolated native Electron launch/renderer/preload/IPC smoke. Manual dialog,
-  visual interaction and packaging acceptance are still separate. The standalone
+  visual interaction and signing remain separate. Packaged portable acceptance is
+  covered by a separate relocated-executable harness. The standalone
   workflow harness may stub OS picker results and file-manager reveal only; it
   must keep production UI, IPC, planning, conversion and verification real.
 
 Windows acceptance requirements and unverified native coverage are tracked in
 `Agents/VALIDATION.md`. GPU/hardware encoding is future scope, not implemented.
+
+### Portable Windows packaging
+
+- `package:win` builds unsigned x64 portable output in ignored `release/`, from
+  an allowlisted runtime and fresh production-only frozen install. Include
+  matching tracked sources and license notices, never local config/secrets.
+- `packaged-smoke.mjs` must launch the relocated actual exe/app.asar with an
+  isolated profile, no checkout module fallback, and both absent/present tools.
+- FFmpeg/ffprobe and optional opusenc remain user-installed local PATH tools.
+  Resolve explicit absolute executables once; ignore implicit cwd, relative
+  entries, Windows scripts and UNC paths. Never silently install/download tools.
+- No native-picker, Explorer, signing or installer claims from boundary stubs.

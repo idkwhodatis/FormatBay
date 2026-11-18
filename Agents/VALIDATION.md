@@ -63,5 +63,17 @@ Before claiming Windows-ready, test the following on a real Windows desktop:
 - Inspect actual window layout, keyboard navigation, language switching and
   narrow-window behavior; the Linux build alone does not verify these.
 
-Packaging/signing and GPU/hardware encoding remain separate future scopes. Do not
+Signing/installers and GPU/hardware encoding remain separate future scopes. Do not
 add hardware flags or claim GPU support as part of the current audio pipeline.
+
+## Packaged Windows acceptance
+
+CI builds the actual unsigned x64 portable folder, then Playwright Electron
+launches a relocated copy outside the checkout and empty cwd. It asserts
+app.isPackaged, app.asar, the production renderer, context isolation and early
+userData isolation. A minimal-PATH launch checks missing-tool UI; installed-tool
+launch drives target/encoder/import/start/reveal through real UI and IPC, verifies
+the FFmpeg→opusenc route, decodes output independently, and preserves input bytes.
+Only OS picker return values and Explorer reveal are stubbed. These are not
+interactive native dialog, signing, SmartScreen or installer tests. The artifact
+contains matching tracked source, build provenance and inclusive license notices.

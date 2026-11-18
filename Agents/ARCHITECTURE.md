@@ -53,7 +53,7 @@ The graph supports A→F→L in unit tests and real FFmpeg → FLAC → opusenc
 execution. Automatic prefers equivalent direct paths; an Opus encoder preference
 can require opusenc as the final tool. Optional opusenc requires local Xiph
 opus-tools and FFmpeg probing/full-decode verification, not automatic installation.
-No OCR/data/video output adapter, binary bundling, automatic installer, package/sign
+No OCR/data/video output adapter, binary bundling, automatic installer, signing
 pipeline, durable queue/resume, drag-drop, recursive import or topology visualizer.
 
 Encoding preserves channel count unless a declared encoder limit requires a
@@ -102,3 +102,13 @@ calling `shell.showItemInFolder`. This requests selection in the OS file manager
 it does not execute/open the media or claim the OS displayed it successfully.
 Missing/moved or nonregular results produce a visible error rather than a silent
 no-op. The trusted top-level sender policy applies to this channel too.
+
+## Distribution and executable discovery
+
+Windows portable packaging stages only production main/preload/backend modules,
+built renderer and fresh production dependencies inside app.asar. Matching tracked
+source and notices accompany the output; no media CLI is bundled. Test harnesses
+and packager/Playwright/Electron npm development packages are excluded.
+Adapters retain absolute executable paths resolved at discovery. Windows ignores
+implicit cwd, relative/empty/UNC PATH entries and non-exe commands, protecting
+against current-directory command shadowing without modifying the user's PATH.

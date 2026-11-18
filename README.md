@@ -24,6 +24,33 @@ folder**; moved or deleted outputs report an error rather than silently failing.
 
 Video output, OCR, structured data and a topology visualization are not yet implemented.
 
+## Windows portable preview
+
+The Windows CI workflow builds an **unsigned Windows x64 portable preview** and
+uploads it only after packaged-executable acceptance succeeds. Download the
+`FormatBay-Windows-x64-unsigned-preview` artifact from a successful workflow run,
+extract the entire directory, then run `FormatBay.exe`. This is not an installer
+or a signed release. Do not bypass Windows security warnings on this project's behalf.
+
+Media command-line tools are **not bundled or auto-installed**. Install FFmpeg
+and ffprobe from [FFmpeg's upstream-linked downloads](https://ffmpeg.org/download.html),
+and optionally [Xiph opus-tools](https://opus-codec.org/downloads/), into an
+absolute local directory on PATH; restart FormatBay after changing PATH.
+Windows discovery accepts local drive-qualified PATH directories and `.exe`
+files only, never implicit current-directory, relative/empty/UNC entries or
+`.cmd`/`.bat` scripts. Missing FFmpeg/ffprobe produces an unavailable catalog.
+
+To reproduce on Windows with Node 24.22.3 and Bun 1.4.4, install both frozen
+lockfiles as below, then commit changes and use `bun run package:win` from a clean checkout. The output is
+`release/FormatBay-win32-x64/`. Matching project source, build inventory and
+license/notices accompany the portable folder. Packaging uses a fresh
+production-only dependency stage; development/test tools are not included.
+`bun run smoke:packaged -- release/FormatBay-win32-x64/FormatBay.exe` relocates
+that folder outside the checkout, verifies actual `app.asar` execution and an
+isolated profile, then checks both missing-tool UI and a real FFmpeg → opusenc
+conversion. Native picker results and Explorer reveal are stubbed only in the
+harness; interactive dialogs, signing and consumer-desktop acceptance remain open.
+
 ## Run from source
 
 Requirements: Bun, Node >=22.12, and `ffmpeg` / `ffprobe` installed on PATH.

@@ -1,5 +1,6 @@
 import {access} from 'node:fs/promises';
 import {runProcess} from './process.js';
+import {resolveTool} from './tool-path.js';
 import {audioLayout,hasCanonicalLayout} from './audio-layout.js';
 
 /** Optional Xiph opus-tools adapter. All inputs/outputs are local task-owned paths. */
@@ -9,6 +10,7 @@ export class OpusencAdapter {
   }
   async discover() {
     try {
+      if (this.runner===runProcess) this.command=await resolveTool(this.command);
       const result=await this.runner(this.command,['--version'],{timeout:10000});
       this.version=(result.stdout||result.stderr).trim().split('\n')[0];
       if (!/opusenc/i.test(this.version)) throw new Error('Unexpected opusenc version response');

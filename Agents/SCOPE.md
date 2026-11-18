@@ -37,7 +37,7 @@
   Publication requires hard-link support on that volume and fails safely otherwise.
 - Tasks are session-local, no persistent queue/resume. Retry means remove/re-add.
 - No recursive import, drag-drop, OCR/data/certificate/video output converters,
-  multi-output fan-out, global graph viewer, packaging/signing or updater.
+  multi-output fan-out, global graph viewer, signed installer or updater.
 - Historical catalog/consts and supported.txt remain unused ideas, not support claims.
 
 ## Validation honesty
@@ -62,3 +62,11 @@ phase and current step are shown. Real Electron DOM workflow coverage uses
 controlled native-picker results and a file-manager spy only in its standalone
 test harness. Native dialog/Explorer interaction and visual acceptance remain
 unverified.
+
+## Windows portable packaging
+
+An unsigned x64 portable build and relocated packaged-executable acceptance are
+provided. CI publishes the folder artifact only after real packaged conversion
+passes. External FFmpeg/ffprobe and optional opusenc must be installed by the user
+in absolute local PATH directories; they are not bundled. Native picker and
+Explorer boundaries remain stubbed in automation. No signed release is claimed.

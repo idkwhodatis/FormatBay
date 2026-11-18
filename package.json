@@ -11,10 +11,14 @@
     "test": "node --test",
     "build": "cd src/frontend && bun run build",
     "check": "node scripts/check.mjs",
-    "check:tools": "node scripts/check-tools.mjs"
+    "check:tools": "node scripts/check-tools.mjs",
+    "package:win": "node scripts/package-windows.mjs",
+    "smoke:packaged": "node scripts/packaged-smoke.mjs"
   },
   "devDependencies": {
-    "electron": "^45.3.4"
+    "@electron/packager": "20.3.0",
+    "electron": "^45.3.4",
+    "playwright-core": "1.65.1"
   },
   "dependencies": {
     "electron-store": "^12.0.0"
@@ -25,5 +29,7 @@
   "trustedDependencies": [
     "electron"
   ],
-  "packageManager": "bun@1.4.4"
+  "packageManager": "bun@1.4.4",
+  "version": "0.1.0-preview.1",
+  "description": "Offline-first desktop media conversion preview"
 }

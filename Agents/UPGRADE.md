@@ -268,3 +268,10 @@ regenerated with Bun 1.4.4; Node 24.22.3 used for checks.
 All declared peer ranges are compatible. Tailwind Variants 4's removed legacy
 configuration APIs are not used here. Electron 45 sandbox preload uses only the
 supported electron module, explicitly .cjs. Baseline upgraded frontend build passed.
+
+## Windows portable preview tooling (2026-11-18)
+
+Added exact development pins `@electron/packager@20.3.0` and
+`playwright-core@1.65.1`, verified against the official npm latest tags. These are
+build/test dependencies only, excluded from the fresh production package stage.
+Electron remains 45.3.4; Node 24.22.3 and Bun 1.4.4 remain pinned in CI.

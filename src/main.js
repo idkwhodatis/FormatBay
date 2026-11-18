@@ -8,7 +8,7 @@ import {revealTaskOutput} from './backend/conversion/output.js';
 import {assertTrustedSender, validateTarget, validateSetting, runTaskActionBatch} from './ipc-policy.js';
 import {migrateLegacySettings} from './settings-migration.js';
 
-const dev = process.argv.includes('--dev');
+const dev = !app.isPackaged && process.argv.includes('--dev');
 const entry = fileURLToPath(new URL('./frontend/dist/index.html', import.meta.url));
 const allowedURL = dev ? 'http://localhost:5173/' : pathToFileURL(entry).href;
 let win;

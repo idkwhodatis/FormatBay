@@ -16,7 +16,7 @@ jobs:
   windows:
     name: Windows real tools, paths and production Electron
     runs-on: windows-2025
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         shell: pwsh
@@ -66,7 +66,24 @@ jobs:
         run: |
           node scripts/electron-smoke.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build unsigned Windows portable preview
+        run: |
+          bun run package:win
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Accept relocated packaged executable with missing and installed tools
+        timeout-minutes: 7
+        run: |
+          node scripts/packaged-smoke.mjs release/FormatBay-win32-x64/FormatBay.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify lockfiles and source remain unchanged
         run: |
           git diff --exit-code
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload tested unsigned portable preview with source and notices
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FormatBay-Windows-x64-unsigned-preview
+          path: release/FormatBay-win32-x64/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14

@@ -38,3 +38,6 @@ config.json
 
 # Local CI output
 test-results.tap
+
+# Unsigned portable packages and corresponding source
+/release/

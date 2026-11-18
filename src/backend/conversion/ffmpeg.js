@@ -1,5 +1,6 @@
 import {stat} from 'node:fs/promises';
 import {runProcess} from './process.js';
+import {resolveTool} from './tool-path.js';
 import {audioLayout,hasCanonicalLayout,hasKnownLayout} from './audio-layout.js';
 
 export const AUDIO_FORMATS = Object.freeze({
@@ -20,6 +21,11 @@ export class FFmpegAdapter {
   }
   async discover() {
     try {
+      // Custom runners are internal test seams; real process execution always
+      // resolves trusted executable paths before discovery or conversion.
+      if (this.runner===runProcess) {
+        [this.ffmpeg,this.ffprobe]=await Promise.all([resolveTool(this.ffmpeg),resolveTool(this.ffprobe)]);
+      }
       const results=await Promise.all([
         this.runner(this.ffmpeg,['-version']),this.runner(this.ffprobe,['-version']),
         this.runner(this.ffmpeg,['-hide_banner','-encoders']),
