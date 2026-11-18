@@ -93,3 +93,12 @@ rather than guessing LFE/center or side/back speaker equivalence.
 opus-tools 0.2 reports blind mapping for the 3.0 WAV mask. The adapter therefore
 uses a verified canonical FLAC intermediate for that input instead of accepting
 the warning; canonical 3.0 FLAC is supported directly.
+
+### Completed-output reveal
+
+`conversion:revealOutput` accepts one backend task ID, never a path or URL. The
+main process requires a completed task and an existing regular output before
+calling `shell.showItemInFolder`. This requests selection in the OS file manager;
+it does not execute/open the media or claim the OS displayed it successfully.
+Missing/moved or nonregular results produce a visible error rather than a silent
+no-op. The trusted top-level sender policy applies to this channel too.

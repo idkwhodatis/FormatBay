@@ -1,9 +1,10 @@
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {readdir} from 'node:fs/promises';
 import path from 'node:path';
-import {app, BrowserWindow, ipcMain, dialog} from 'electron';
+import {app, BrowserWindow, ipcMain, dialog, shell} from 'electron';
 import Store from 'electron-store';
 import {ConversionService} from './backend/conversion/service.js';
+import {revealTaskOutput} from './backend/conversion/output.js';
 import {assertTrustedSender, validateTarget, validateSetting, runTaskActionBatch} from './ipc-policy.js';
 import {migrateLegacySettings} from './settings-migration.js';
 
@@ -73,6 +74,7 @@ app.whenReady().then(async () => {
     return null;
   });
   handle('conversion:action', (action, ids) => runTaskActionBatch(service, action, ids));
+  handle('conversion:revealOutput', id => revealTaskOutput(service, id, output => shell.showItemInFolder(output)));
   ipcMain.on('app:close', event => { try { verify(event); app.quit(); } catch {} });
   ipcMain.on('app:minimize', event => { try { verify(event); win.minimize(); } catch {} });
   win = new BrowserWindow({width: 1280, height: 980, minWidth: 850, minHeight: 600,

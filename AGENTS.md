@@ -46,6 +46,7 @@ URL. New windows/navigation and unrequested permissions are denied.
 | conversion:outputDirectory | invoke | native output-directory picker |
 | conversion:resetOutputDirectory | invoke | restore beside-input output for future imports |
 | conversion:action | invoke | start/cancel/remove + 1–500 unique backend task IDs; whole batch validated first |
+| conversion:revealOutput | invoke | one completed backend task ID; reveal its existing regular output in the OS file manager |
 | conversion:tasks | push | {revision,tasks}, no privileged event exposed |
 
 ## File ownership
@@ -127,7 +128,9 @@ actually produce it. Report unrun native UI/platform checks explicitly.
   dialogs. Tests cover stale init/action replies and removal resurrection.
 - Linux CI remains non-GUI. `windows.yml` adds the same real-tool suite plus
   isolated native Electron launch/renderer/preload/IPC smoke. Manual dialog,
-  visual interaction and packaging acceptance are still separate.
+  visual interaction and packaging acceptance are still separate. The standalone
+  workflow harness may stub OS picker results and file-manager reveal only; it
+  must keep production UI, IPC, planning, conversion and verification real.
 
 Windows acceptance requirements and unverified native coverage are tracked in
 `Agents/VALIDATION.md`. GPU/hardware encoding is future scope, not implemented.

@@ -126,6 +126,7 @@
     "phase": {
       "converting": "正在转换",
       "verifying": "正在验证输出"
-    }
+    },
+    "revealOutput": "在文件夹中显示"
   }
 }

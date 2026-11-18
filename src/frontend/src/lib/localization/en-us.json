@@ -126,6 +126,7 @@
     "phase": {
       "converting": "Converting",
       "verifying": "Verifying output"
-    }
+    },
+    "revealOutput": "Show in folder"
   }
 }

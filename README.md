@@ -19,7 +19,8 @@ FFmpeg and optional [Xiph opusenc](https://opus-codec.org/docs/opus-tools/opusen
 are production adapters. With opus-tools installed on PATH, choose Opus and the
 advanced opusenc encoder to route video → FFmpeg FLAC/WAV → opusenc Opus. Automatic
 mode prefers a direct route when equivalent, or chains tools when FFmpeg lacks
-Opus encoding. Each stage is verified before the next runs.
+Opus encoding. Each stage is verified before the next runs. Completed tasks offer **Show in
+folder**; moved or deleted outputs report an error rather than silently failing.
 
 Video output, OCR, structured data and a topology visualization are not yet implemented.
 
@@ -46,7 +47,10 @@ not native Electron GUI or packaging validation. The separate Windows workflow
 runs the same no-skip suite with checksum-pinned upstream-linked media tools and
 launches the production Electron app in an isolated profile. To run that native
 renderer/preload/IPC smoke locally after building, use
-`node scripts/electron-smoke.mjs` on a machine that can run Electron.
+`node scripts/electron-smoke.mjs` on a machine that can run Electron with both
+FFmpeg and opusenc installed. This also drives the real UI/conversion workflow
+with controlled native-picker results and a file-manager spy confined to the
+harness, not interactive native dialog or Explorer acceptance.
 
 Outputs default beside each input as `name-converted.ext`, with numeric suffixes
 when necessary. Choosing an output folder applies to newly imported tasks. Folder

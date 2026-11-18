@@ -62,7 +62,7 @@ jobs:
         run: |
           bun run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Launch production Electron and verify renderer, preload and IPC
+      - name: Exercise production Electron UI, IPC and real conversions
         run: |
           node scripts/electron-smoke.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

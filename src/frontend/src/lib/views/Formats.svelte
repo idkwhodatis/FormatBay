@@ -33,7 +33,7 @@
     </Accordion.Item>
     {#each Object.entries(consts.outputFormats) as [type,format]}
       <Accordion.Item value={type}>
-        <Accordion.Trigger class="pt-3 pb-3">{$_("left.formats."+type.toLowerCase()+".title")}</Accordion.Trigger>
+        <Accordion.Trigger data-testid={`category-${type.toLowerCase()}`} class="pt-3 pb-3">{$_("left.formats."+type.toLowerCase()+".title")}</Accordion.Trigger>
         <Accordion.Content>
           <div class="flex flex-wrap gap-x-2 gap-y-4">
             {#each format as i}

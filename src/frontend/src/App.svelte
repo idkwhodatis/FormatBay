@@ -10,6 +10,14 @@
   import Tasks from '$lib/views/Tasks.svelte';
   import store, {consts, updateTasks, addFiles} from '$lib/store.svelte.js';
   let bootError = $state('');
+  let revealing = $state(false);
+  async function revealOutput(id) {
+    if (revealing) return;
+    revealing = true; store.error = '';
+    try { await window.electronAPI.revealOutput(id); }
+    catch (error) { store.error = error.message; }
+    finally { revealing = false; }
+  }
   let selected = $derived(store.tasks[store.selectedTask]);
   onMount(() => {
     let disposed = false;
@@ -40,14 +48,14 @@
     <div class="flex flex-1 min-h-0">
       <aside class="w-2/5 max-w-lg border-r flex flex-col min-h-0">
         <div class="p-3 border-b flex flex-wrap gap-2">
-          <Button disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
-          <Button variant="outline" disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
+          <Button data-testid="add-files" disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
+          <Button data-testid="add-folder" variant="outline" disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
           <p class="text-xs text-muted-foreground w-full">{$_('conversion.importHint')}</p>
         </div>
         <Tabs.Root bind:value={store.tab} class="flex-1 min-h-0">
           <Tabs.List class="w-full">
-            <Tabs.Trigger value="formats">{$_('left.formats.title')}</Tabs.Trigger>
-            <Tabs.Trigger value="tasks">{$_('left.tasks.title')} ({Object.keys(store.tasks).length})</Tabs.Trigger>
+            <Tabs.Trigger data-testid="tab-formats" value="formats">{$_('left.formats.title')}</Tabs.Trigger>
+            <Tabs.Trigger data-testid="tab-tasks" value="tasks">{$_('left.tasks.title')} ({Object.keys(store.tasks).length})</Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="formats" class="overflow-auto p-3"><Formats/></Tabs.Content>
           <Tabs.Content value="tasks" class="overflow-auto"><Tasks/></Tabs.Content>
@@ -61,7 +69,7 @@
           {#if store.selectedFormat?.[1] === 'opus' && consts.targetEncoders?.opus?.includes('opusenc')}
             <label class="flex items-center gap-2 mt-3 text-sm">
               {$_('conversion.encoder')}
-              <select bind:value={store.selectedEncoder} disabled={store.busy} class="border rounded p-2">
+              <select data-testid="encoder-select" bind:value={store.selectedEncoder} disabled={store.busy} class="border rounded p-2">
                 <option value="">{$_('conversion.autoEncoder')}</option>
                 <option value="opusenc">{$_('conversion.opusencEncoder')}</option>
               </select>
@@ -81,7 +89,7 @@
           {/each}
         {/if}
         {#if selected}
-          <article class="border rounded-lg p-5 space-y-4">
+          <article data-testid="task-detail" data-task-id={selected.id} data-status={selected.status} class="border rounded-lg p-5 space-y-4">
             <div class="flex justify-between gap-3"><h2 class="font-semibold break-all">{selected.inputPath.split(/[\\/]/).pop()}</h2><span>{$_(`conversion.status.${selected.status}`)}</span></div>
             <p class="text-xs text-muted-foreground break-all">{selected.inputPath}</p>
             <h3 class="font-medium">{$_('conversion.route')} → .{selected.target.format}</h3>
@@ -89,10 +97,10 @@
             {#if selected.plan}
               <ol class="space-y-3">
                 {#each selected.plan.steps as step, i}
-                  <li class="p-3 bg-muted rounded" class:ring-2={selected.status === 'running' && selected.stepIndex === i} aria-current={selected.status === 'running' && selected.stepIndex === i ? 'step' : undefined}><span class="font-medium">{i + 1}. {step.label}</span><span class="text-sm text-muted-foreground block">{step.toolId} → {step.output?.format ?? step.output?.container ?? step.output?.kind ?? ''}</span></li>
+                  <li data-testid="route-step" data-tool-id={step.toolId} class="p-3 bg-muted rounded" class:ring-2={selected.status === 'running' && selected.stepIndex === i} aria-current={selected.status === 'running' && selected.stepIndex === i ? 'step' : undefined}><span class="font-medium">{i + 1}. {step.label}</span><span class="text-sm text-muted-foreground block">{step.toolId} → {step.output?.format ?? step.output?.container ?? step.output?.kind ?? ''}</span></li>
                 {/each}
               </ol>
-              {#each selected.plan.warnings ?? [] as warning}<p class="text-sm text-amber-800">{warning}</p>{/each}
+              {#each selected.plan.warnings ?? [] as warning}<p data-testid="route-warning" class="text-sm text-amber-800">{warning}</p>{/each}
             {/if}
             {#if selected.error}<p role="alert" class="text-red-700 break-words">{selected.error}</p>{/if}
             {#if selected.status === 'running'}
@@ -101,7 +109,8 @@
               {/if}
               <progress aria-label={$_('conversion.progress')} class="w-full" max="100" value={selected.progress ?? 0}></progress>
             {/if}
-            {#if selected.outputPath}<p class="text-sm break-all">{$_('conversion.output')}: {selected.outputPath}</p>{/if}
+            {#if selected.outputPath}<p data-testid="task-output" class="text-sm break-all">{$_('conversion.output')}: {selected.outputPath}</p>{/if}
+            {#if selected.status === 'done' && selected.outputPath}<Button data-testid="reveal-output" variant="outline" disabled={revealing} onclick={() => revealOutput(selected.id)}>{$_('conversion.revealOutput')}</Button>{/if}
           </article>
         {:else}
           <p class="py-12 text-muted-foreground">{store.selectedFormat ? $_('right.hinttask') : $_('conversion.chooseTarget')}</p>

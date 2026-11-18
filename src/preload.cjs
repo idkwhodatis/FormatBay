@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chooseOutputDirectory: () => ipcRenderer.invoke('conversion:outputDirectory'),
   resetOutputDirectory: () => ipcRenderer.invoke('conversion:resetOutputDirectory'),
   taskAction: (action, ids) => ipcRenderer.invoke('conversion:action', action, ids),
+  revealOutput: id => ipcRenderer.invoke('conversion:revealOutput', id),
   onTasks: callback => {
     const listener = (_event, snapshot) => callback(snapshot);
     ipcRenderer.on('conversion:tasks', listener);

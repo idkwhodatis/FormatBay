@@ -10,6 +10,8 @@
 - Serial queue, progress, cancel, remove and bulk task controls.
 - Per-step probe/full-decode integrity and duration validation, per-task temp cleanup and no-overwrite publication.
 - Route/warnings/errors/output paths shown in Svelte UI, no dummy tasks.
+- Completed outputs can be revealed in the OS file manager via a task-ID-only
+  action; moved/deleted outputs report an error.
 - Sandboxed narrow IPC, production loadFile, favorite/offline persistence,
   navigator language default and locale choice.
 - Node tests including real tiny synthetic media fixtures, production build.
@@ -56,4 +58,7 @@ The planner cannot bypass preservation by introducing a lossy stereo intermediat
 Only unambiguous mono/stereo layout is inferred when a header omits it.
 
 Advanced Opus encoder selection can require opusenc; conversion/verification
-phase and current step are shown. Native GUI interaction remains unverified.
+phase and current step are shown. Real Electron DOM workflow coverage uses
+controlled native-picker results and a file-manager spy only in its standalone
+test harness. Native dialog/Explorer interaction and visual acceptance remain
+unverified.

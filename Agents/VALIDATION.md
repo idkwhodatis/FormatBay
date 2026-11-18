@@ -26,9 +26,15 @@ coverage; Linux results alone are not evidence of Windows execution.
 from their upstream download pages. It builds the renderer and launches the
 locked official Electron binary using an isolated temporary profile. The smoke
 harness checks the production window/renderer, sandboxed preload, real IPC and
-normal application shutdown; it adds no test hooks to production code.
+normal application shutdown; it adds no test hooks to production code. It also
+drives DOM controls through target/encoder selection, favorites, tab/language
+changes, import cancellation/failure, real FFmpeg → opusenc conversion, completed
+output reveal, bulk cancellation and task removal. Only native picker results
+and the OS file-manager reveal call are stubbed in the standalone harness;
+conversion processes, planning, file verification and IPC are not mocked.
 
-A successful smoke is not a visual review or an interactive native-dialog test.
+A successful smoke is not a visual review, physical-input acceptance, interactive
+native-dialog test or proof that Explorer selected a file.
 Report the observed CI result, not just the existence of this workflow.
 
 ### Manual checks still required

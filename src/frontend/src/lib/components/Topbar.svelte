@@ -35,7 +35,7 @@
     <Button variant="ghost" disabled={choosing || store.busy} onclick={chooseOutput}><FolderOpen/>{$_('topbar.outputfolder.tooltip')}</Button>
     {#if store.outputDirectory}<Button variant="ghost" disabled={choosing || store.busy} onclick={resetOutput}>{$_('conversion.resetOutput')}</Button>{/if}
     <label class="text-xs flex items-center gap-1"><input type="checkbox" disabled={savingOffline} checked={store.offlineMode} onchange={changeOffline}/>{$_('topbar.offline.pure.title')}</label>
-    <select aria-label={$_('conversion.language')} value={$locale} onchange={e => locale.set(e.currentTarget.value)} class="text-sm border rounded p-1">
+    <select data-testid="language-select" aria-label={$_('conversion.language')} value={$locale} onchange={e => locale.set(e.currentTarget.value)} class="text-sm border rounded p-1">
       <option value="en-us">English</option><option value="zh-cn">简体中文</option>
     </select>
   </div>
