@@ -2,7 +2,7 @@
 export function assertTrustedSender(event, win, allowedURL, quitting = false) {
   if (quitting || !win || event.sender !== win.webContents ||
       event.senderFrame !== win.webContents.mainFrame || event.senderFrame?.url !== allowedURL) {
-    throw new Error('Untrusted IPC sender');
+    throw new Error(`Untrusted IPC sender (closing=${quitting}, window=${!!win}, sender=${event.sender === win?.webContents}, mainFrame=${event.senderFrame === win?.webContents.mainFrame}, document=${event.senderFrame?.url === allowedURL})`);
   }
 }
 export function validateTarget(target, outputFormats, targetEncoders = {}) {

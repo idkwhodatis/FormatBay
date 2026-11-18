@@ -83,7 +83,8 @@ app.whenReady().then(async () => {
   win.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
   win.webContents.on('will-navigate', (event, url) => { if (url !== allowedURL) event.preventDefault(); });
   win.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
-  if (dev) await win.loadURL(allowedURL); else await win.loadFile(entry);
+  // Use the exact canonical URL also checked at the IPC boundary.
+  await win.loadURL(allowedURL);
 }).catch(error => {
   dialog.showErrorBox('FormatBay failed to start', error.message);
   app.quit();
