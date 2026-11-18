@@ -26,3 +26,24 @@ export function validateSetting(key, value, outputFormats) {
   return Object.fromEntries(Object.entries(outputFormats).map(([category, formats]) => [category,
     Object.fromEntries(formats.map(format => [format, value[category]?.[format] === true]))]));
 }
+
+/** Validate the entire renderer batch before acting; never yield between cancellations. */
+export function runTaskActionBatch(service, action, ids) {
+  if (!['start', 'cancel', 'remove'].includes(action)) throw new Error('Unsupported action');
+  if (!Array.isArray(ids) || ids.length < 1 || ids.length > 500 ||
+      ids.some(id => typeof id !== 'string' || !id || id.length > 128) || new Set(ids).size !== ids.length) {
+    throw new Error('Invalid task selection');
+  }
+  const tasks = new Map(service.list().map(task => [task.id, task]));
+  for (const id of ids) {
+    if (!tasks.has(id)) throw new Error('Unknown task');
+    if (action === 'remove' && tasks.get(id).status === 'running') throw new Error('Cancel the running task before removing it');
+  }
+  // Remove pending work before aborting the active tool. A synchronous batch also
+  // prevents the queue draining between separate renderer IPC roundtrips.
+  const ordered = action === 'cancel'
+    ? [...ids.filter(id => tasks.get(id).status !== 'running'), ...ids.filter(id => tasks.get(id).status === 'running')]
+    : ids;
+  for (const id of ordered) service[action](id);
+  return service.snapshot();
+}

@@ -42,9 +42,15 @@ FFmpeg integration skipped when the tools are absent. Passing build/unit tests
 alone does not mean native Windows/macOS dialogs, encoding variants or packaging
 have been verified. Document actual native smoke coverage in the delivery summary.
 
-Encoding preserves channel count unless a declared encoder limit requires a
-downmix (MP3: 2, Opus: 8), which is explicitly warned. Stream-copy paths preserve
-channel count. The planned channel count is verified in the output.
+Speaker layout, not just channel count, is probed and verified in every real
+output. Normal conversion targets preserve the source speaker layout; MP3 may
+explicitly downmix to stereo with a warning. Opus/FLAC/Vorbis encoding currently
+accepts only canonical mono, stereo, 3.0, quad, 5.0, 5.1, 6.1 and 7.1 layouts.
+Unknown/noncanonical multichannel layouts (including 2.1 and 5.1(side)) and Opus
+inputs above eight channels are conservatively blocked for those encodings, not
+silently remapped.
+The planner cannot bypass preservation by introducing a lossy stereo intermediate.
+Only unambiguous mono/stereo layout is inferred when a header omits it.
 
 Advanced Opus encoder selection can require opusenc; conversion/verification
 phase and current step are shown. Native GUI interaction remains unverified.

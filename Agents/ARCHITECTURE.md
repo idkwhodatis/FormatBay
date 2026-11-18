@@ -62,10 +62,34 @@ channel count. The planned channel count is verified in the output.
 
 ## Optional Opus encoder
 
-`conversion/opusenc.js` declares compatible mono-through-eight-channel WAV PCM /
+`conversion/opusenc.js` declares compatible canonical-speaker-layout mono-through-eight-channel WAV PCM /
 FLAC input states and a lossy Opus edge. Startup exposes `targetEncoders` separately
 from target formats. Narrow IPC accepts only advertised `encoder: opusenc` on an
 Opus target. The planner includes the final-tool constraint in goal acceptance and
 search-state pruning. An original input to an external encoder or stream-copy route is fully validated
 first; intermediates are already validated. Tool errors/cancel never publish partial
 output. Task `phase` and `stepIndex` expose truthful per-step UI progress.
+
+### Task action batches
+
+`conversion:action(action, ids)` accepts 1–500 unique existing task IDs. Main
+validates the complete batch before mutation and executes it synchronously.
+Cancellation removes queued work before aborting running work, so Stop All cannot
+start queued tasks between renderer IPC roundtrips. Responses remain revisioned
+task snapshots. The preload exposes no arbitrary service-method invocation.
+
+### Speaker-layout constraints
+
+`audio-layout.js` defines canonical positions independently of channel counts.
+Probe and step outputs carry `audioLayout`; output validation checks exact layout.
+FFmpeg does not set `-ac` when the channel count is unchanged, avoiding accidental
+quad → 4.0 relabeling. Opus/FLAC/Vorbis encoders reject noncanonical layouts;
+opusenc warnings about blind speaker mapping are failures. `requiredAudioLayout`
+is a generic planner goal constraint used by the service for non-MP3 targets,
+preventing paths through lossy stereo intermediates from bypassing preservation.
+MP3 retains its explicitly warned stereo downmix. Unsupported layouts are blocked
+rather than guessing LFE/center or side/back speaker equivalence.
+
+opus-tools 0.2 reports blind mapping for the 3.0 WAV mask. The adapter therefore
+uses a verified canonical FLAC intermediate for that input instead of accepting
+the warning; canonical 3.0 FLAC is supported directly.

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {assertTrustedSender, validateTarget, validateSetting} from '../src/ipc-policy.js';
+import {assertTrustedSender, validateTarget, validateSetting, runTaskActionBatch} from '../src/ipc-policy.js';
 
 test('IPC accepts only current window main frame and exact document URL', () => {
   const url = 'file:///app/index.html';
@@ -37,4 +37,20 @@ test('encoder preference requires advertised opusenc capability for Opus only', 
   assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder:'opusenc'},outputs,{}));
   assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder:'opusenc'},outputs));
   assert.throws(()=>validateTarget({kind:'audio',format:'opus',encoder:'opusenc'},{Audio:[]},encoders));
+});
+test('batch cancellation handles queued tasks before active task without yielding', () => {
+  const calls=[];let revision=0;
+  const service={list:()=>[{id:'a',status:'running'},{id:'b',status:'queued'},{id:'c',status:'queued'}],cancel:id=>{calls.push(id);revision++;},snapshot:()=>({revision,tasks:[]})};
+  assert.deepEqual(runTaskActionBatch(service,'cancel',['a','b','c']),{revision:3,tasks:[]});
+  assert.deepEqual(calls,['b','c','a']);
+});
+test('invalid action or any invalid batch member prevents all mutations', () => {
+  const calls=[];const service={list:()=>[{id:'a',status:'ready'},{id:'b',status:'running'}],start:id=>calls.push(id),remove:id=>calls.push(id),snapshot:()=>({revision:0,tasks:[]})};
+  for(const ids of [null,'a',[],['a','missing'],['a','a'],['a',3],['a',''],['a','x'.repeat(129)],Array.from({length:501},(_,i)=>String(i))])
+    assert.throws(()=>runTaskActionBatch(service,'start',ids));
+  assert.throws(()=>runTaskActionBatch(service,'shutdown',['a']));
+  assert.throws(()=>runTaskActionBatch(service,'remove',['a','b']));
+  assert.deepEqual(calls,[]);
+  runTaskActionBatch(service,'start',['a']);
+  assert.deepEqual(calls,['a']);
 });

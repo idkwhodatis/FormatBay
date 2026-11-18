@@ -45,7 +45,7 @@ URL. New windows/navigation and unrequested permissions are denied.
 | conversion:add | invoke | target {kind:audio,format,encoder?}, folder boolean; native dialog selects paths |
 | conversion:outputDirectory | invoke | native output-directory picker |
 | conversion:resetOutputDirectory | invoke | restore beside-input output for future imports |
-| conversion:action | invoke | start/cancel/remove + backend task ID |
+| conversion:action | invoke | start/cancel/remove + 1–500 unique backend task IDs; whole batch validated first |
 | conversion:tasks | push | {revision,tasks}, no privileged event exposed |
 
 ## File ownership

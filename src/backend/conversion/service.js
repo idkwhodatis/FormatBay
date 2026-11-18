@@ -61,7 +61,7 @@ export class ConversionService {
           const canonical=await realpath(inputPath);
           const probe=await this.adapter.probe(canonical,{signal:this.importController.signal});
           const identity=await stat(canonical);
-          const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null});
+          const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null,requiredAudioLayout:task.target.format==='mp3'?null:(probe.state.audioLayout??null)});
           if (!plan.ok) throw new Error(plan.message);
           task.plan=plan;task.status='ready';
           this.internal.set(id,{inputPath:canonical,probe,identity:{size:identity.size,mtimeMs:identity.mtimeMs},outputDirectory:this.outputDirectory});
@@ -105,7 +105,7 @@ export class ConversionService {
       const identity=await stat(internal.inputPath);
       if (identity.size!==internal.identity.size || identity.mtimeMs!==internal.identity.mtimeMs) throw new Error('The input changed since planning. Remove and add the file again.');
       const probe=await this.adapter.probe(internal.inputPath,{signal});
-      const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null});
+      const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null,requiredAudioLayout:task.target.format==='mp3'?null:(probe.state.audioLayout??null)});
       if (!plan.ok) throw new Error(plan.message);
       if (JSON.stringify(plan)!==JSON.stringify(task.plan)) throw new Error('The input changed since planning. Remove and add the file again to review its new route.');
       const directory=internal.outputDirectory ?? path.dirname(internal.inputPath);
@@ -130,7 +130,7 @@ export class ConversionService {
         }});
         task.phase='verifying';this.emit();
         const verified=await this.adapter.probe(output,{signal});
-        if (!verified.size || !matchesTarget(verified.state,step.output) || verified.state.audioCodec!==step.output.audioCodec || !verified.state.hasAudio || verified.state.hasVideo || (step.output.audioChannels && verified.state.audioChannels!==step.output.audioChannels)) throw new Error('Tool output did not match the planned media format');
+        if (!verified.size || !matchesTarget(verified.state,step.output) || verified.state.audioCodec!==step.output.audioCodec || !verified.state.hasAudio || verified.state.hasVideo || (step.output.audioChannels && verified.state.audioChannels!==step.output.audioChannels) || (step.output.audioLayout!==undefined && verified.state.audioLayout!==step.output.audioLayout)) throw new Error('Tool output did not match the planned media format');
         await this.adapter.verify?.(output,{signal,expectedDuration:probe.audioDuration||verified.audioDuration||0});
         current=output;
       }

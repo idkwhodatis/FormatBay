@@ -61,6 +61,7 @@ See [agent architecture](Agents/ARCHITECTURE.md) and [scope](Agents/SCOPE.md).
 [Bun](https://bun.sh/), [Vite](https://vite.dev/) and [FFmpeg](https://ffmpeg.org/).
 Tesseract integration remains planned. Thanks to their contributors.
 
-Encoding preserves channel count unless a declared encoder limit requires a
-downmix (MP3: 2, Opus: 8), which is explicitly warned. Stream-copy paths preserve
-channel count. The planned channel count is verified in the output.
+Speaker layouts are preserved and verified, not inferred from multichannel
+counts. MP3's stereo downmix is warned. Opus/FLAC/Vorbis encoding currently
+requires canonical speaker layouts; 2.1, 5.1(side), unknown multichannel layouts
+and more than eight Opus channels are blocked rather than silently remapped.

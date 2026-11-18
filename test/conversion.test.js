@@ -29,7 +29,7 @@ test('real FFmpeg: video to audio, silent input, nonmedia, no overwrite and clea
  const dir=await temp();const service=new ConversionService({adapter});
  try{
   const init=await service.initialize();assert.ok(init.outputFormats.Audio.includes('flac'));
-  const input=path.join(dir,'video spaces; $literal.mkv');
+  const input=path.join(dir,'视频 spaces & semi; $literal.mkv');
   await runProcess('ffmpeg',['-v','error','-f','lavfi','-i','color=c=black:s=32x32:d=0.5','-f','lavfi','-i','sine=frequency=440:duration=0.5','-c:v','ffv1','-c:a','pcm_s16le','-shortest',input]);
   const before=await readFile(input);
   await service.addFiles([input],{kind:'audio',format:'flac'});

@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addFiles: (target, folder = false) => ipcRenderer.invoke('conversion:add', target, folder),
   chooseOutputDirectory: () => ipcRenderer.invoke('conversion:outputDirectory'),
   resetOutputDirectory: () => ipcRenderer.invoke('conversion:resetOutputDirectory'),
-  taskAction: (action, id) => ipcRenderer.invoke('conversion:action', action, id),
+  taskAction: (action, ids) => ipcRenderer.invoke('conversion:action', action, ids),
   onTasks: callback => {
     const listener = (_event, snapshot) => callback(snapshot);
     ipcRenderer.on('conversion:tasks', listener);

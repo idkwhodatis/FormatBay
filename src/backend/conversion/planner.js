@@ -1,6 +1,6 @@
 /**
  * A media artifact is a probed state, not an extension.
- * @typedef {{kind:string,format:string,audioCodec?:string,hasAudio?:boolean,hasVideo?:boolean}} Artifact
+ * @typedef {{kind:string,format:string,audioCodec?:string,hasAudio?:boolean,hasVideo?:boolean,audioChannels?:number,audioLayout?:string}} Artifact
  * @typedef {{id:string,toolId:string,label:string,available?:boolean,network?:boolean,
  * accepts:(state:Artifact)=>boolean,output:(state:Artifact)=>Artifact,
  * loss:number,warnings?:(state:Artifact)=>string[]}} Capability
@@ -13,7 +13,9 @@ export function matchesTarget(state, target) {
 }
 
 /** Find a bounded, cycle-free route; minimize quality loss before step count. */
-export function planConversion(input, target, capabilities, {offline = true, maxSteps = 4, maxStates = 2000, requiredFinalTool = null} = {}) {
+export function planConversion(input, target, capabilities, {offline = true, maxSteps = 4, maxStates = 2000, requiredFinalTool = null, requiredAudioLayout = null} = {}) {
+  if (requiredAudioLayout!==null && typeof requiredAudioLayout!=='string') throw new Error('Invalid speaker-layout constraint');
+  const reachesTarget=state=>matchesTarget(state,target) && (requiredAudioLayout===null || state.audioLayout===requiredAudioLayout);
   if (!input || !target || !Array.isArray(capabilities)) throw new Error('Invalid conversion request');
   if (requiredFinalTool!==null && (typeof requiredFinalTool!=='string'||!requiredFinalTool)) throw new Error('Invalid encoder selection');
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 16) throw new Error('Invalid route limit');
@@ -33,7 +35,7 @@ export function planConversion(input, target, capabilities, {offline = true, max
     queue.sort((a,b) => a.loss-b.loss || a.steps.length-b.steps.length);
     const current = queue.shift();
     // A conversion request always produces a new artifact, even for the same format.
-    if (current.steps.length && matchesTarget(current.state,target) && (!requiredFinalTool || current.steps.at(-1).toolId===requiredFinalTool)) {
+    if (current.steps.length && reachesTarget(current.state) && (!requiredFinalTool || current.steps.at(-1).toolId===requiredFinalTool)) {
       return {ok:true,input,target,steps:current.steps,warnings:[...new Set(current.warnings)],loss:current.loss};
     }
     if (current.steps.length >= maxSteps) continue;
@@ -41,7 +43,7 @@ export function planConversion(input, target, capabilities, {offline = true, max
       if (edge.available === false || (offline && edge.network) || !edge.accepts(current.state)) continue;
       const output = edge.output(current.state);
       const key = stateKey(output);
-      const isGoal = matchesTarget(output,target);
+      const isGoal = reachesTarget(output);
       if (current.visited.has(key) && !isGoal) continue;
       const loss = current.loss + edge.loss;
       const depth = current.steps.length+1;
@@ -56,5 +58,5 @@ export function planConversion(input, target, capabilities, {offline = true, max
     }
   }
   return {ok:false,reason:explored > maxStates ? 'search-limit' : 'unreachable',
-    message:'No compatible local conversion route is available. Check the installed tools and input codecs.'};
+    message:requiredAudioLayout===null?'No compatible local conversion route is available. Check the installed tools and input codecs.':`No compatible local conversion route preserves the input speaker layout (${requiredAudioLayout || 'unknown'}). Check the installed tools and input codecs/layout.`};
 }

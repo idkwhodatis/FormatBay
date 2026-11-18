@@ -36,7 +36,7 @@ export async function taskAction(action, ids) {
   store.taskActionBusy = true;
   store.error = '';
   try {
-    for (const id of ids) updateTasks(await window.electronAPI.taskAction(action, id));
+    updateTasks(await window.electronAPI.taskAction(action, ids));
   } catch (error) { store.error = error.message; }
   finally { store.taskActionBusy = false; }
 }

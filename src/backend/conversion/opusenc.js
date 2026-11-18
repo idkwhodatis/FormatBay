@@ -1,5 +1,6 @@
 import {access} from 'node:fs/promises';
 import {runProcess} from './process.js';
+import {audioLayout,hasCanonicalLayout} from './audio-layout.js';
 
 /** Optional Xiph opus-tools adapter. All inputs/outputs are local task-owned paths. */
 export class OpusencAdapter {
@@ -24,10 +25,12 @@ export class OpusencAdapter {
     return [{id:'opusenc:encode:opus',toolId:'opusenc',toolVersion:this.version,
       label:'Encode audio to OPUS with opusenc',available:true,network:false,loss:1,
       accepts:state=>state.kind==='audio' && state.hasAudio && !state.hasVideo &&
-        state.audioChannels>=1 && state.audioChannels<=8 &&
+        state.audioChannels>=1 && state.audioChannels<=8 && hasCanonicalLayout(state) &&
         ((state.format==='flac' && state.audioCodec==='flac') ||
-         (state.format==='wav' && ['pcm_s16le','pcm_s24le','pcm_s32le','pcm_f32le'].includes(state.audioCodec))),
-      output:state=>({kind:'audio',format:'opus',audioCodec:'opus',hasAudio:true,hasVideo:false,audioChannels:state.audioChannels}),
+         // opus-tools 0.2 cannot identify the 3.0 WAV speaker mask. Route it
+         // through canonical FLAC rather than accepting a blind mapping warning.
+         (state.format==='wav' && audioLayout(state)!=='3.0' && ['pcm_s16le','pcm_s24le','pcm_s32le','pcm_f32le'].includes(state.audioCodec))),
+      output:state=>({kind:'audio',format:'opus',audioCodec:'opus',hasAudio:true,hasVideo:false,audioChannels:state.audioChannels,audioLayout:audioLayout(state)}),
       warnings:()=>['Lossy Opus encoding can reduce audio quality.','Metadata, chapters and embedded artwork are not retained.','Opus uses a 48 kHz output sample rate.'],
     }];
   }
@@ -38,7 +41,8 @@ export class OpusencAdapter {
     // temp path; additionally refuse any pre-existing path before invoking it.
     try {await access(outputPath);throw new Error('Intermediate output already exists');}
     catch(error) {if(error.code!=='ENOENT')throw error;}
-    await this.runner(this.command,['--quiet','--discard-comments','--discard-pictures',inputPath,outputPath],
+    const result=await this.runner(this.command,['--quiet','--discard-comments','--discard-pictures',inputPath,outputPath],
       {signal,timeout:24*60*60*1000});
+    if (/warning:|blindly mapping/i.test(result.stderr??'')) throw new Error('opusenc could not safely preserve the input: '+result.stderr.trim().slice(-2000));
   }
 }

@@ -12,6 +12,11 @@ Every produced intermediate/final output is also strictly decoded. Error-level
 FFmpeg diagnostics are failures even if a version exits with code zero. Terminal
 task state is emitted only after temporary-file cleanup settles.
 
+Process-wrapper regressions cover a child ignoring graceful termination, bounded
+stdout retention during forced termination, progress-consumer exceptions, and
+literal argv preservation for Windows-style paths, Unicode and shell characters.
+The argv test runs on Linux; it is not a Windows process-launch test.
+
 ## Windows acceptance checklist (not yet executed)
 
 The owner uses Windows. Preserve argv-array spawning (`shell:false`),

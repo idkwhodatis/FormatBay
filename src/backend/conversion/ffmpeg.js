@@ -1,5 +1,6 @@
 import {stat} from 'node:fs/promises';
 import {runProcess} from './process.js';
+import {audioLayout,hasCanonicalLayout,hasKnownLayout} from './audio-layout.js';
 
 export const AUDIO_FORMATS = Object.freeze({
   wav:{codec:'pcm_s16le',encoder:'pcm_s16le',muxer:'wav',loss:0},
@@ -40,18 +41,23 @@ export class FFmpegAdapter {
   capabilities() {
     return this.formats().flatMap(format => {
       const spec=AUDIO_FORMATS[format];
-      const output=state=>({kind:'audio',format,audioCodec:spec.codec,hasAudio:true,hasVideo:false,audioChannels:state.audioChannels??2});
-      const channelLimit=format==='mp3'?2:(format==='opus'?8:Infinity);
-      const encodedOutput=state=>({...output(state),audioChannels:Math.min(state.audioChannels??2,channelLimit)});
+      const output=state=>({kind:'audio',format,audioCodec:spec.codec,hasAudio:true,hasVideo:false,audioChannels:state.audioChannels??2,audioLayout:audioLayout(state)});
+      const channelLimit=format==='mp3'?2:Infinity;
+      const encodedOutput=state=>({...output(state),audioChannels:Math.min(state.audioChannels??2,channelLimit),
+        audioLayout:(state.audioChannels??2)>channelLimit?'stereo':audioLayout(state)});
+      // FLAC/Vorbis/Opus use defined speaker mappings. A count-only conversion
+      // can silently relabel LFE as center or side as back speakers.
+      const acceptsLayout=state=>hasKnownLayout(state) &&
+        (!['flac','ogg','opus'].includes(format) || hasCanonicalLayout(state));
       const warnings=state=>[
         ...(state.hasVideo ? ['Video, subtitles and additional audio tracks are discarded; only the first audio stream is kept.'] : ['Only the first audio stream is kept.']),
         'Metadata, chapters and embedded artwork are not retained.',
       ];
       return [
         {id:`ffmpeg:copy:${format}`,toolId:'ffmpeg',toolVersion:this.version,label:`Copy audio to ${format.toUpperCase()} (no re-encoding)`,available:true,verifyInput:true,loss:0,
-          accepts:state=>state.hasAudio && state.audioCodec===spec.codec,output,warnings},
+          accepts:state=>state.hasAudio && hasKnownLayout(state) && state.audioCodec===spec.codec,output,warnings},
         {id:`ffmpeg:encode:${format}`,toolId:'ffmpeg',toolVersion:this.version,label:`Encode audio to ${format.toUpperCase()}`,available:true,loss:spec.loss || (format==='wav' ? 0.1 : 0),
-          accepts:state=>state.hasAudio && this.canDecode(state.audioCodec),output:encodedOutput,
+          accepts:state=>state.hasAudio && this.canDecode(state.audioCodec) && acceptsLayout(state),output:encodedOutput,
           warnings:state=>[...warnings(state),...((state.audioChannels??2)>channelLimit ? [`Audio is downmixed to ${channelLimit} channels for this encoder.`] : []),...(spec.loss ? ['Lossy encoding can reduce audio quality.'] : []),...(format==='wav' ? ['WAV encoding uses 16-bit PCM and may reduce higher bit-depth precision.'] : []),...(format==='opus' ? ['Opus uses a 48 kHz output sample rate.'] : []),...(format==='flac' ? ['FLAC stores integer PCM; floating-point or higher-precision inputs may be quantized. Lossless output cannot restore previously lost quality.'] : [])]},
       ];
     });
@@ -71,7 +77,7 @@ export class FFmpegAdapter {
     const format=audio?.codec_name==='aac' && formats.includes('aac') ? 'aac' : formats.includes('ogg') ? (audio?.codec_name==='opus'?'opus':'ogg') : formats[0];
     const duration=Number(data.format?.duration ?? audio?.duration);
     const audioDuration=Number(audio?.duration ?? (!video ? data.format?.duration : 0));
-    return {state:{kind:video?'video':'audio',format,audioCodec:audio?.codec_name??'',hasAudio:!!audio,hasVideo:!!video,audioChannels:audio?.channels??0},
+    return {state:{kind:video?'video':'audio',format,audioCodec:audio?.codec_name??'',hasAudio:!!audio,hasVideo:!!video,audioChannels:audio?.channels??0,audioLayout:audioLayout({audioLayout:audio?.channel_layout,audioChannels:audio?.channels})},
       duration:Number.isFinite(duration)&&duration>0?duration:0,audioDuration:Number.isFinite(audioDuration)&&audioDuration>0?audioDuration:0,size:info.size};
   }
   async verify(path,{signal,expectedDuration=0}={}) {
@@ -97,7 +103,8 @@ export class FFmpegAdapter {
     const result=await this.runner(this.ffmpeg,['-hide_banner','-nostdin','-v','error','-xerror','-err_detect','explode','-n',...localInput,'-i',inputPath,
       '-map','0:a:0','-vn','-sn','-dn','-map_metadata','-1','-map_chapters','-1',
       '-c:a',copy?'copy':spec.encoder,
-      ...(!copy?['-ac',String(step.output.audioChannels)]:[]),
+      // -ac with an unchanged count can replace quad with default 4.0.
+      ...(!copy && step.output.audioChannels!==step.input.audioChannels?['-ac',String(step.output.audioChannels)]:[]),
       ...(!copy && format==='opus'?['-ar','48000']:[]),
       '-f',spec.muxer,'-progress','pipe:1','-nostats',outputPath],{
         signal,timeout:24*60*60*1000,onStdout:chunk=>{

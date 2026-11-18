@@ -4,7 +4,7 @@ import path from 'node:path';
 import {app, BrowserWindow, ipcMain, dialog} from 'electron';
 import Store from 'electron-store';
 import {ConversionService} from './backend/conversion/service.js';
-import {assertTrustedSender, validateTarget, validateSetting} from './ipc-policy.js';
+import {assertTrustedSender, validateTarget, validateSetting, runTaskActionBatch} from './ipc-policy.js';
 import {migrateLegacySettings} from './settings-migration.js';
 
 const dev = process.argv.includes('--dev');
@@ -23,10 +23,6 @@ const service = new ConversionService({onChange: (tasks, revision) => {
 function verify(event) { assertTrustedSender(event, win, allowedURL, quitting); }
 function handle(channel, fn) {
   ipcMain.handle(channel, (event, ...args) => { verify(event); return fn(...args); });
-}
-function taskID(id) {
-  if (typeof id !== 'string' || id.length > 128 || !service.list().some(t => t.id === id)) throw new Error('Unknown task');
-  return id;
 }
 async function withDialog(fn) {
   if (dialogOpen) throw new Error('A file dialog is already open');
@@ -76,11 +72,7 @@ app.whenReady().then(async () => {
     outputDirectory = null;
     return null;
   });
-  handle('conversion:action', (action, id) => {
-    if (!['start', 'cancel', 'remove'].includes(action)) throw new Error('Unsupported action');
-    service[action](taskID(id));
-    return service.snapshot();
-  });
+  handle('conversion:action', (action, ids) => runTaskActionBatch(service, action, ids));
   ipcMain.on('app:close', event => { try { verify(event); app.quit(); } catch {} });
   ipcMain.on('app:minimize', event => { try { verify(event); win.minimize(); } catch {} });
   win = new BrowserWindow({width: 1280, height: 980, minWidth: 850, minHeight: 600,
