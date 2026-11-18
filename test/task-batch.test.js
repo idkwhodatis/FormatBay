@@ -1,13 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm,realpath} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {ConversionService} from '../src/backend/conversion/service.js';
 import {runTaskActionBatch} from '../src/ipc-policy.js';
 
 test('Stop All cannot drain queued tasks after cancelling the active conversion', async () => {
-  const dir=await mkdtemp(path.join(os.tmpdir(),'formatbay-batch-'));
+  const dir=await realpath(await mkdtemp(path.join(os.tmpdir(),'formatbay-batch-')));
   const input=path.join(dir,'input.a');await writeFile(input,'test');
   const state={kind:'audio',format:'a',audioCodec:'a',hasAudio:true,hasVideo:false};
   const output={...state,format:'b',audioCodec:'b'};let calls=0,started;
@@ -23,6 +23,7 @@ test('Stop All cannot drain queued tasks after cancelling the active conversion'
   const service=new ConversionService({adapter});
   try {
     await service.initialize();await service.addFiles([input,input,input],{kind:'audio',format:'b'});
+    for(const task of service.list())assert.equal(task.status,'ready',task.error);
     const ids=service.list().map(task=>task.id);
     runTaskActionBatch(service,'start',ids);await entered;
     assert.deepEqual(service.list().map(task=>task.status),['running','queued','queued']);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,rm} from 'node:fs/promises';
+import {mkdtemp,rm,realpath} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {audioLayout,hasCanonicalLayout} from '../src/backend/conversion/audio-layout.js';
@@ -72,7 +72,7 @@ test('opusenc refuses warnings about blind speaker mapping',async()=>{
 
 test('equal channel count cannot hide a wrong output speaker layout',async()=>{
  const {writeFile,readdir}=await import('node:fs/promises');
- const dir=await mkdtemp(path.join(os.tmpdir(),'formatbay-layout-verify-')),input=path.join(dir,'source.a');await writeFile(input,'source');
+ const dir=await realpath(await mkdtemp(path.join(os.tmpdir(),'formatbay-layout-verify-'))),input=path.join(dir,'source.a');await writeFile(input,'source');
  const state={kind:'audio',format:'a',hasAudio:true,hasVideo:false,audioCodec:'a',audioChannels:3,audioLayout:'2.1'};
  const planned={...state,format:'b',audioCodec:'b'},actual={...planned,audioLayout:'3.0'};
  const adapter={discover:async()=>({id:'fake',available:true}),formats:()=>['b'],
@@ -81,7 +81,7 @@ test('equal channel count cannot hide a wrong output speaker layout',async()=>{
   execute:async(_step,_input,output)=>writeFile(output,'wrong speakers')};
  const service=new ConversionService({adapter});
  try{
-  await service.initialize();await service.addFiles([input],{kind:'audio',format:'b'});service.start(service.list()[0].id);
+  await service.initialize();await service.addFiles([input],{kind:'audio',format:'b'});const task=service.list()[0];assert.equal(task.status,'ready',task.error);service.start(task.id);
   await waitFor(()=>['done','failed'].includes(service.list()[0].status));
   assert.equal(service.list()[0].status,'failed');assert.match(service.list()[0].error,/did not match/);
   assert.equal(service.list()[0].outputPath,null);assert.deepEqual(await readdir(dir),['source.a']);

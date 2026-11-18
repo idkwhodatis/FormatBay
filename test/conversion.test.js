@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,readFile,readdir,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,readdir,rm,realpath} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {ConversionService,publish} from '../src/backend/conversion/service.js';
 import {FFmpegAdapter} from '../src/backend/conversion/ffmpeg.js';
 import {runProcess} from '../src/backend/conversion/process.js';
-const temp=()=>mkdtemp(path.join(os.tmpdir(),'formatbay-test-'));
+// Windows temp paths may contain short-name aliases; service probes canonical paths.
+const temp=async()=>realpath(await mkdtemp(path.join(os.tmpdir(),'formatbay-test-')));
 const waitFor=async(fn)=>{for(let i=0;i<1200;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
 
 test('publication is no-clobber even under concurrency',async()=>{
@@ -61,7 +62,7 @@ test('fake executor: queue, cancellation, failed validation and cleanup',async()
  const service=new ConversionService({adapter});
  try {
   await service.initialize();await service.addFiles([input,input],{kind:'audio',format:'b'});
-  const [a,b]=service.list();service.start(a.id);service.start(b.id);
+  const [a,b]=service.list();assert.equal(a.status,'ready',a.error);assert.equal(b.status,'ready',b.error);service.start(a.id);service.start(b.id);
   await waitFor(()=>started===1);assert.equal(service.list()[1].status,'queued');
   // Deliberately cancel while the fake tool is still awaiting file I/O.
   service.cancel(b.id);service.cancel(a.id);release();
@@ -190,7 +191,7 @@ test('terminal snapshot is published only after cleanup settles',async()=>{
  let release,cleaning=false;const gate=new Promise(resolve=>{release=resolve;});const pushes=[];
  const service=new ConversionService({adapter,onChange:(tasks,revision)=>pushes.push({tasks,revision}),cleanup:async directory=>{cleaning=true;await gate;await rm(directory,{recursive:true,force:true});}});
  try {
-  await service.initialize();await service.addFiles([input],{kind:'audio',format:'b'});const id=service.list()[0].id;service.start(id);
+  await service.initialize();await service.addFiles([input],{kind:'audio',format:'b'});const task=service.list()[0];assert.equal(task.status,'ready',task.error);const id=task.id;service.start(id);
   await waitFor(()=>cleaning);
   const pending=service.snapshot();assert.equal(pending.tasks[0].status,'running');assert.equal(pending.tasks[0].outputPath,null);
   assert.deepEqual(pending,pushes.at(-1));assert.throws(()=>service.remove(id),/Cancel/);
