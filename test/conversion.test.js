@@ -50,23 +50,25 @@ test('real FFmpeg: video to audio, silent input, nonmedia, no overwrite and clea
 });
 
 test('fake executor: queue, cancellation, failed validation and cleanup',async()=>{
- const dir=await temp();let started=0;
+ const dir=await temp();let started=0,release;
+ const beforeListener=new Promise(resolve=>{release=resolve;});
  const input=path.join(dir,'in.a');await writeFile(input,'input');
  const state={kind:'audio',format:'a',hasAudio:true,hasVideo:false,audioCodec:'a'};
  const output={...state,format:'b',audioCodec:'b'};
  const adapter={discover:async()=>({id:'fake',available:true}),formats:()=>['b'],capabilities:()=>[{id:'fake',toolId:'fake',label:'fake',loss:0,accepts:s=>s.format==='a',output:()=>output}],
  probe:async file=>({state:file===input?state:output,size:5,duration:1}),
- execute:async(step,source,dest,{signal})=>{started++;await writeFile(dest,'partial');await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('abort')),{once:true}));}};
+ execute:async(step,source,dest,{signal})=>{started++;await writeFile(dest,'partial');await beforeListener;await new Promise((resolve,reject)=>{if(signal.aborted)reject(new Error('abort'));else signal.addEventListener('abort',()=>reject(new Error('abort')),{once:true});});}};
  const service=new ConversionService({adapter});
  try {
   await service.initialize();await service.addFiles([input,input],{kind:'audio',format:'b'});
   const [a,b]=service.list();service.start(a.id);service.start(b.id);
   await waitFor(()=>started===1);assert.equal(service.list()[1].status,'queued');
-  service.cancel(b.id);service.cancel(a.id);
+  // Deliberately cancel while the fake tool is still awaiting file I/O.
+  service.cancel(b.id);service.cancel(a.id);release();
   await waitFor(()=>service.list()[0].status==='cancelled');
   assert.equal(started,1);assert.equal((await readdir(dir)).some(n=>n.startsWith('.formatbay-')),false);
   service.remove(a.id);assert.equal(service.list().length,1);
- }finally{await service.shutdown();await rm(dir,{recursive:true,force:true});}
+ }finally{release();await service.shutdown();await rm(dir,{recursive:true,force:true});}
 });
 
 test('real FFmpeg: every advertised target produces verified output, including same-format copy',async t=>{
