@@ -7,6 +7,8 @@
 
   import store from "$lib/store.svelte.js"
 
+  import {visibleFormats} from '$lib/tool-catalog.js';
+  let catalog = $derived(visibleFormats(consts.outputFormats, consts.installableFormats));
   let favedFormat=$derived.by(()=>{
     return Object.entries(store.favorite).flatMap(([type,formats])=>
       Object.entries(formats)
@@ -31,7 +33,7 @@
         </div>
       </Accordion.Content>
     </Accordion.Item>
-    {#each Object.entries(consts.outputFormats) as [type,format]}
+    {#each Object.entries(catalog) as [type,format]}
       <Accordion.Item value={type}>
         <Accordion.Trigger data-testid={`category-${type.toLowerCase()}`} class="pt-3 pb-3">{$_("left.formats."+type.toLowerCase()+".title")}</Accordion.Trigger>
         <Accordion.Content>

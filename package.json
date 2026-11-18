@@ -21,7 +21,8 @@
     "playwright-core": "1.65.1"
   },
   "dependencies": {
-    "electron-store": "^12.0.0"
+    "electron-store": "^12.0.0",
+    "yauzl": "3.4.0"
   },
   "engines": {
     "node": ">=22.12.0"

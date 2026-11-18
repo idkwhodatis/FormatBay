@@ -53,7 +53,7 @@ The graph supports A→F→L in unit tests and real FFmpeg → FLAC → opusenc
 execution. Automatic prefers equivalent direct paths; an Opus encoder preference
 can require opusenc as the final tool. Optional opusenc requires local Xiph
 opus-tools and FFmpeg probing/full-decode verification, not automatic installation.
-No OCR/data/video output adapter, binary bundling, automatic installer, signing
+No OCR/data/video output adapter, automatic installer, signing
 pipeline, durable queue/resume, drag-drop, recursive import or topology visualizer.
 
 Encoding preserves channel count unless a declared encoder limit requires a
@@ -107,8 +107,21 @@ no-op. The trusted top-level sender policy applies to this channel too.
 
 Windows portable packaging stages only production main/preload/backend modules,
 built renderer and fresh production dependencies inside app.asar. Matching tracked
-source and notices accompany the output; no media CLI is bundled. Test harnesses
+source and notices accompany the output; Windows includes our source-complete
+FFmpeg/ffprobe build outside app.asar. Test harnesses
 and packager/Playwright/Electron npm development packages are excluded.
 Adapters retain absolute executable paths resolved at discovery. Windows ignores
 implicit cwd, relative/empty/UNC PATH entries and non-exe commands, protecting
 against current-directory command shadowing without modifying the user's PATH.
+
+## Explicit app-local tool management
+
+ToolManager owns immutable download manifests, resolved managed/bundled/PATH
+commands and progress revisions. Main serializes tool operations against dialogs
+and prepared/active conversions, then rebuilds adapters/catalog. The potential
+format list is separate from verified executable capability. Optional installation
+requires explicit confirmation; media tasks never download dependencies.
+Only reviewed files from checksum-verified HTTPS ZIPs enter atomic versioned
+userData directories. Removal moves managed versions into recoverable app-local
+Trash; bundled/system paths are immutable. Corrupt copies or failed adapter probes
+show failure and retain removal capability. Updates are not implemented or claimed.

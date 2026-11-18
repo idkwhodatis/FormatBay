@@ -87,3 +87,18 @@ The WAV copy route's decoded hash must match the first input audio, with origina
 source bytes unchanged. A tagged FLAC tests direct opusenc comment removal too.
 Technical encoder/vendor tags may be newly generated; no metadata-preservation
 capability is claimed. Audio-only routes show the same explicit stream-loss warning.
+
+## Tool management and default bundle acceptance
+
+The Windows workflow first builds pinned official FFmpeg/library sources using
+MinGW, retains all sources/licenses/configuration, then runs the complete native
+conversion suite with those binaries. Packaged UI smoke runs with minimal PATH:
+FFmpeg must be bundled, all six audio formats real, opusenc initially absent. It
+dismisses an install disclosure without downloading, confirms a real pinned
+opusenc download/extraction, verifies actual cross-tool output, removes the
+managed copy without touching bundled tools/output, then tests system PATH fallback
+in a fresh isolated profile. Source-mode UI smoke tests missing-format prompts,
+refresh, favorite preservation and blocked management for prepared tasks.
+Unit regressions cover HTTPS/redirect/hash/size failures, unsafe ZIP entries,
+cancellation while streams close, atomic installation, corruption and removal.
+Native OS dialogs and signing remain untested; these limitations are unchanged.

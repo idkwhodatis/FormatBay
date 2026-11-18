@@ -13,8 +13,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  bundled-ffmpeg:
+    name: Build source-complete LGPL FFmpeg for Windows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install trusted distribution cross compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 make nasm pkg-config curl xz-utils
+      - name: Build pinned official sources and retain corresponding source
+        env:
+          CROSS_PREFIX: x86_64-w64-mingw32-
+          JOBS: '4'
+        run: bash scripts/build-bundled-ffmpeg.sh "$RUNNER_TEMP/formatbay-ffmpeg"
+      - name: Upload complete binary, source and license bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ffmpeg-windows-x64-source-complete
+          path: ${{ runner.temp }}/formatbay-ffmpeg/
+          if-no-files-found: error
+          retention-days: 14
   windows:
     name: Windows real tools, paths and production Electron
+    needs: bundled-ffmpeg
     runs-on: windows-2025
     timeout-minutes: 25
     defaults:
@@ -36,6 +62,16 @@ jobs:
           bun-version: '1.4.4'
       - name: Install pinned media tools from upstream-linked distributions
         run: ./scripts/install-windows-tools.ps1
+      - name: Download same-run source-complete FFmpeg build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ffmpeg-windows-x64-source-complete
+          path: ${{ runner.temp }}/formatbay-ffmpeg
+      - name: Use self-built FFmpeg for every native conversion test
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP 'formatbay-ffmpeg'
+          "FORMATBAY_FFMPEG_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $bundle 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Install locked dependencies and official Electron binary
         run: |
           bun install --frozen-lockfile
@@ -70,8 +106,8 @@ jobs:
         run: |
           bun run package:win
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Accept relocated packaged executable with missing and installed tools
-        timeout-minutes: 7
+      - name: Accept bundled tools and real explicit optional-tool installation in packaged executable
+        timeout-minutes: 10
         run: |
           node scripts/packaged-smoke.mjs release/FormatBay-win32-x64/FormatBay.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

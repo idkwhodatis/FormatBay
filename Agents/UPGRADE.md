@@ -275,3 +275,10 @@ Added exact development pins `@electron/packager@20.3.0` and
 `playwright-core@1.65.1`, verified against the official npm latest tags. These are
 build/test dependencies only, excluded from the fresh production package stage.
 Electron remains 45.3.4; Node 24.22.3 and Bun 1.4.4 remain pinned in CI.
+
+## Managed ZIP dependency (2026-11-18)
+
+Added `yauzl@3.4.0` as an exact production pin (official npm latest verified) for
+lazy bounded ZIP reads. Full archive SHA256 verification precedes extraction;
+only reviewed entries are written, and symlinks/path traversal/duplicates are
+rejected. No archive executable/script is run by the extractor.

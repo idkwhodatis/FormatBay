@@ -1,11 +1,45 @@
+import {acceptsToolSnapshot} from './tool-catalog.js';
 import {applyTaskSnapshot} from './task-snapshot.js';
 const store = $state({
   init: false, offlineMode: true, favorite: {}, tasks: {}, taskRevision: -1,
   selectedFormat: null, selectedEncoder: '', selectedTask: null, outputDirectory: null,
-  tab: 'formats', busy: false, dialogBusy: false, taskActionBusy: false, favoriteSaving: false, error: '', tools: []
+  tab: 'formats', busy: false, dialogBusy: false, taskActionBusy: false, favoriteSaving: false, error: '', tools: [], toolManagement: {revision: -1, tools: [], busy: false}, toolPanel: false, toolPrompt: null, toolActionBusy: false, toolCancelBusy: false
 });
 export default store;
-export const consts = {};
+export const consts = $state({outputFormats: {}, installableFormats: {}, targetEncoders: {}});
+export function updateTools(snapshot) {
+  if (acceptsToolSnapshot(store.toolManagement.revision, snapshot)) store.toolManagement = snapshot;
+}
+export function applyInitData(data) {
+  updateTasks(data.taskSnapshot);
+  // A delayed reply must not undo newer download progress or catalog changes.
+  if (data.toolManagement && !acceptsToolSnapshot(store.toolManagement.revision, data.toolManagement)) return;
+  consts.outputFormats = data.outputFormats ?? {};
+  consts.installableFormats = data.installableFormats ?? {};
+  consts.targetEncoders = data.targetEncoders ?? {};
+  store.tools = data.tools ?? [];
+  store.outputDirectory = data.outputDirectory;
+  updateTools(data.toolManagement);
+  if (store.selectedFormat && !consts.outputFormats[store.selectedFormat[0]]?.includes(store.selectedFormat[1])) {
+    store.selectedFormat = null; store.selectedEncoder = '';
+  }
+  if (!consts.targetEncoders.opus?.includes(store.selectedEncoder)) store.selectedEncoder = '';
+}
+export function promptTool(id) { store.toolPanel = true; store.toolPrompt = id; }
+export function chooseFormat(type, format) {
+  if (!consts.outputFormats[type]?.includes(format)) { promptTool(format === 'opus' && store.tools.some(tool => tool.id === 'ffmpeg' && tool.available) ? 'opusenc' : 'ffmpeg'); return; }
+  if (store.selectedFormat?.[0] !== type || store.selectedFormat?.[1] !== format) store.selectedEncoder = '';
+  store.selectedFormat = [type, format]; store.selectedTask = null;
+}
+export async function toolAction(action, id) {
+  const cancel = action === 'cancelToolInstall';
+  if (cancel ? store.toolCancelBusy : store.toolActionBusy) return;
+  if (cancel) store.toolCancelBusy = true; else store.toolActionBusy = true;
+  store.error = '';
+  try { applyInitData(await window.electronAPI[action](id)); }
+  catch (error) { store.error = error.message; }
+  finally { if (cancel) store.toolCancelBusy = false; else store.toolActionBusy = false; }
+}
 export function updateTasks(snapshot) {
   const current = {revision: store.taskRevision, tasks: store.tasks, selectedTask: store.selectedTask};
   try {
@@ -17,7 +51,7 @@ export function updateTasks(snapshot) {
   } catch (error) { store.error = error.message; }
 }
 export async function addFiles(folder = false) {
-  if (!store.selectedFormat || store.busy || store.dialogBusy) return;
+  if (!store.selectedFormat || !consts.outputFormats[store.selectedFormat[0]]?.includes(store.selectedFormat[1]) || store.busy || store.dialogBusy) return;
   const format = store.selectedFormat[1];
   const target = {kind: 'audio', format};
   if (format === 'opus' && store.selectedEncoder) target.encoder = store.selectedEncoder;

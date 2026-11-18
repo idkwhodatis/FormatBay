@@ -4,6 +4,9 @@ import path from 'node:path';
 import {app, BrowserWindow, ipcMain, dialog, shell} from 'electron';
 import Store from 'electron-store';
 import {ConversionService} from './backend/conversion/service.js';
+import {FFmpegAdapter} from './backend/conversion/ffmpeg.js';
+import {OpusencAdapter} from './backend/conversion/opusenc.js';
+import {ToolManager} from './backend/conversion/tool-manager.js';
 import {revealTaskOutput} from './backend/conversion/output.js';
 import {assertTrustedSender, validateTarget, validateSetting, runTaskActionBatch} from './ipc-policy.js';
 import {migrateLegacySettings} from './settings-migration.js';
@@ -17,6 +20,30 @@ let shutdownComplete = false;
 let dialogOpen = false;
 let outputDirectory = null;
 let catalog;
+let manager;
+let toolOperation = false;
+const installableFormats = {Audio: ['wav','flac','mp3','aac','ogg','opus']};
+const initData = () => ({...catalog, installableFormats, toolManagement: manager.snapshot(), taskSnapshot: service.snapshot(), outputDirectory});
+function noToolOperation() { if (toolOperation) throw new Error('Wait for tool management to finish'); }
+function canManageTools() {
+  noToolOperation();
+  if (dialogOpen || service.list().some(task => ['ready','queued','running'].includes(task.status))) {
+    throw new Error('Finish or remove pending conversion tasks and close file dialogs before changing tools.');
+  }
+}
+async function rediscoverTools() {
+  await manager.refresh();
+  const commands = manager.commands();
+  service.adapters = [new FFmpegAdapter({ffmpeg:commands.ffmpeg ?? 'ffmpeg', ffprobe:commands.ffprobe ?? 'ffprobe'}), new OpusencAdapter({command:commands.opusenc ?? 'opusenc'})];
+  service.adapter = service.adapters[0];
+  catalog = await service.initialize();
+  manager.applyDiscovery(catalog.tools);
+}
+async function manageTool(fn) {
+  canManageTools(); toolOperation = true;
+  try { await fn(); await rediscoverTools(); return initData(); }
+  finally { toolOperation = false; }
+}
 const service = new ConversionService({onChange: (tasks, revision) => {
   if (win && !win.isDestroyed()) win.webContents.send('conversion:tasks', {revision, tasks});
 }});
@@ -32,17 +59,25 @@ async function withDialog(fn) {
 }
 
 app.whenReady().then(async () => {
-  catalog = await service.initialize();
+  manager = new ToolManager({root:path.join(app.getPath('userData'),'tools'),bundledRoot:app.isPackaged ? path.join(process.resourcesPath,'tools') : undefined,onChange:snapshot=>{
+    if(win && !win.isDestroyed())win.webContents.send('tools:state',snapshot);
+  }});
+  await rediscoverTools();
   const settings = new Store();
   await migrateLegacySettings(settings, path.join(app.getAppPath(), 'config.json'), catalog.outputFormats);
   const settingKeys = new Set(['favorite', 'offlineMode']);
-  handle('app:initData', () => ({...catalog, taskSnapshot: service.snapshot(), outputDirectory}));
+  handle('app:initData', initData);
+  handle('tools:install', id => manageTool(() => manager.install(id)));
+  handle('tools:remove', id => manageTool(() => manager.remove(id)));
+  handle('tools:refresh', () => manageTool(async () => {}));
+  handle('tools:cancel', id => { manager.cancel(id); return initData(); });
   handle('store:get', key => {
     if (!settingKeys.has(key)) throw new Error('Unsupported setting');
     return settings.get(key);
   });
-  handle('store:set', (key, value) => settings.set(key, validateSetting(key, value, catalog.outputFormats)));
+  handle('store:set', (key, value) => settings.set(key, validateSetting(key, value, installableFormats)));
   handle('conversion:add', (target, folder = false) => {
+    noToolOperation();
     const validatedTarget = validateTarget(target, catalog.outputFormats, catalog.targetEncoders);
     if (typeof folder !== 'boolean') throw new Error('Invalid folder flag');
     return withDialog(async () => {
@@ -73,7 +108,7 @@ app.whenReady().then(async () => {
     outputDirectory = null;
     return null;
   });
-  handle('conversion:action', (action, ids) => runTaskActionBatch(service, action, ids));
+  handle('conversion:action', (action, ids) => { noToolOperation(); return runTaskActionBatch(service, action, ids); });
   handle('conversion:revealOutput', id => revealTaskOutput(service, id, output => shell.showItemInFolder(output)));
   ipcMain.on('app:close', event => { try { verify(event); app.quit(); } catch {} });
   ipcMain.on('app:minimize', event => { try { verify(event); win.minimize(); } catch {} });
@@ -95,7 +130,7 @@ app.on('before-quit', event => {
   event.preventDefault();
   if (quitting) return;
   quitting = true;
-  Promise.resolve(service.shutdown()).catch(console.error).finally(() => {
+  Promise.all([service.shutdown(),manager?.shutdown()]).catch(console.error).finally(() => {
     shutdownComplete = true;
     app.quit();
   });

@@ -128,5 +128,24 @@
       "verifying": "正在验证输出"
     },
     "revealOutput": "在文件夹中显示"
+  },
+  "toolManager": {
+    "manage": "管理工具",
+    "requiresTool": "需要安装工具",
+    "manual": "自动安装支持 Windows x64。其他系统请将 FFmpeg/ffprobe 和可选的 opusenc 安装到 PATH，然后刷新。内置及 PATH 工具无法在此移除。",
+    "refresh": "刷新工具",
+    "source": "来源",
+    "status": "状态",
+    "unknownSize": "大小尚未确定",
+    "cancelDownload": "取消安装",
+    "update": "更新",
+    "install": "安装",
+    "remove": "移除托管副本",
+    "network": "此操作会从下列来源下载并安装工具。即使启用离线模式，也会使用网络；不会上传您的媒体文件。继续前请核对来源及许可证。",
+    "size": "下载大小",
+    "license": "许可证",
+    "confirm": "确认下载并安装",
+    "dismiss": "关闭",
+    "maximum": "最多"
   }
 }

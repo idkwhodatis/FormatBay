@@ -1,6 +1,15 @@
 const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getInitData: () => ipcRenderer.invoke('app:initData'),
+  installTool: id => ipcRenderer.invoke('tools:install', id),
+  cancelToolInstall: id => ipcRenderer.invoke('tools:cancel', id),
+  removeTool: id => ipcRenderer.invoke('tools:remove', id),
+  refreshTools: () => ipcRenderer.invoke('tools:refresh'),
+  onTools: callback => {
+    const listener = (_event, snapshot) => callback(snapshot);
+    ipcRenderer.on('tools:state', listener);
+    return () => ipcRenderer.removeListener('tools:state', listener);
+  },
   closeApp: () => ipcRenderer.send('app:close'),
   minimizeApp: () => ipcRenderer.send('app:minimize'),
   addFiles: (target, folder = false) => ipcRenderer.invoke('conversion:add', target, folder),

@@ -67,6 +67,16 @@ unverified.
 
 An unsigned x64 portable build and relocated packaged-executable acceptance are
 provided. CI publishes the folder artifact only after real packaged conversion
-passes. External FFmpeg/ffprobe and optional opusenc must be installed by the user
-in absolute local PATH directories; they are not bundled. Native picker and
+passes. The current preview bundles our own source-complete FFmpeg/ffprobe;
+optional opusenc is explicitly installed through Tools or safe PATH. Native picker and
 Explorer boundaries remain stubbed in automation. No signed release is claimed.
+
+## Managed tools and bundled FFmpeg (2026-11-18)
+
+Windows x64 packages include our pinned-source FFmpeg/ffprobe build with matching
+source/notices. Tools UI supports explicit pinned FFmpeg/opusenc installation,
+progress, cancellation, discovery refresh and recoverable managed removal. Missing
+formats remain visible to open installation information, not to claim availability.
+Linux/macOS managed downloads, automatic updates, installers/signing and GPU
+encoding remain outside implemented scope. Earlier external-only preview notes
+are superseded by this section; see BUNDLED-FFMPEG.md for provenance and limits.

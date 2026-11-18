@@ -33,30 +33,46 @@ uploads it only after packaged-executable acceptance succeeds. Download the
 extract the entire directory, then run `FormatBay.exe`. This is not an installer
 or a signed release. Do not bypass Windows security warnings on this project's behalf.
 
-Media command-line tools are **not bundled or auto-installed**. Install FFmpeg
-and ffprobe from [FFmpeg's upstream-linked downloads](https://ffmpeg.org/download.html),
-and optionally [Xiph opus-tools](https://opus-codec.org/downloads/), into an
-absolute local directory on PATH; restart FormatBay after changing PATH.
-Windows discovery accepts local drive-qualified PATH directories and `.exe`
-files only, never implicit current-directory, relative/empty/UNC entries or
-`.cmd`/`.bat` scripts. Missing FFmpeg/ffprobe produces an unavailable catalog.
+Windows x64 previews now include **FFmpeg and ffprobe**, built by this project
+from pinned official sources with GPL/nonfree components, automatic dependency
+detection, networking and hardware acceleration disabled. The complete matching
+source archives, build recipe/configuration and notices travel with the tools.
+See [bundled build details](Agents/BUNDLED-FFMPEG.md). This is a source-rebuild
+recipe, not a claim of bit-for-bit reproducibility or blanket patent clearance.
 
-To reproduce on Windows with Node 24.22.3 and Bun 1.4.4, install both frozen
-lockfiles as below, then commit changes and use `bun run package:win` from a clean checkout. The output is
-`release/FormatBay-win32-x64/`. Matching project source, build inventory and
-license/notices accompany the portable folder. Packaging uses a fresh
-production-only dependency stage; development/test tools are not included.
-`bun run smoke:packaged -- release/FormatBay-win32-x64/FormatBay.exe` relocates
-that folder outside the checkout, verifies actual `app.asar` execution and an
-isolated profile, then checks both missing-tool UI and a real FFmpeg → opusenc
-conversion. Native picker results and Explorer reveal are stubbed only in the
-harness; interactive dialogs, signing and consumer-desktop acceptance remain open.
+Open **Tools** to inspect the origin/version, refresh discovery, or explicitly
+install optional **opusenc**. Selecting an unavailable format opens installation
+information only: downloading requires a separate confirmation showing the
+upstream URL, size and license. Downloads are HTTPS-only, size-bounded and
+SHA-256 pinned; only reviewed ZIP entries are extracted into app-local storage.
+Cancellation cleans temporary files. Managed copies can be removed into an
+app-local recoverable Trash; bundled/system tools are never removed. There is
+no automatic update check: published tool versions are pinned to this app release.
+
+Managed installs currently support **Windows x64 only**. Linux/macOS retain
+manual absolute-PATH installation. Windows PATH discovery ignores empty/relative,
+UNC and script entries. Refresh applies new capabilities without restart, but
+finish/remove pending conversion tasks and close file dialogs before changing
+tools. Media conversion stays local; the separate confirmed installation uses
+network access even when the offline conversion preference is enabled.
+
+To reproduce the portable package, build the source-complete FFmpeg bundle first,
+set `FORMATBAY_FFMPEG_BUNDLE` to its output directory, install both frozen Bun
+lockfiles, then run `bun run package:win` from a clean committed Windows checkout.
+The output is `release/FormatBay-win32-x64/`. The package requires its complete
+source/notices bundle, not arbitrary third-party FFmpeg executable files.
+`bun run smoke:packaged -- release/FormatBay-win32-x64/FormatBay.exe` exercises
+actual relocated app.asar UI with bundled FFmpeg, explicitly downloads/installs
+opusenc, converts/decodes media, removes that managed copy, and checks PATH fallback.
+Native picker results and Explorer reveal are test boundaries, not interactive
+native-dialog, signing, SmartScreen or installer acceptance.
 
 ## Run from source
 
 Requirements: Bun, Node >=22.12, and `ffmpeg` / `ffprobe` installed on PATH.
 Optional: install Xiph opus-tools (`opusenc`) for the second encoder.
-FormatBay does not automatically download tools or upload your files.
+FormatBay never uploads media or downloads tools without explicit installation confirmation.
+Source builds can use Tools to install reviewed Windows x64 binaries instead of PATH.
 
 ```sh
 bun install

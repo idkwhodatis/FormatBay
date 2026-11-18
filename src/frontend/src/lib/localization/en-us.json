@@ -128,5 +128,24 @@
       "verifying": "Verifying output"
     },
     "revealOutput": "Show in folder"
+  },
+  "toolManager": {
+    "manage": "Manage tools",
+    "requiresTool": "Requires installation",
+    "manual": "Automatic installation supports Windows x64. On other systems, install FFmpeg/ffprobe and optional opusenc on PATH, then refresh. Bundled and PATH tools cannot be removed here.",
+    "refresh": "Refresh tools",
+    "source": "Source",
+    "status": "Status",
+    "unknownSize": "Size not yet known",
+    "cancelDownload": "Cancel installation",
+    "update": "Update",
+    "install": "Install",
+    "remove": "Remove managed copy",
+    "network": "This downloads and installs a tool from the source below. It uses the network even when offline mode is enabled; your media files are not uploaded. Review the source and license before continuing.",
+    "size": "Download size",
+    "license": "License",
+    "confirm": "Confirm download and install",
+    "dismiss": "Dismiss",
+    "maximum": "Up to"
   }
 }

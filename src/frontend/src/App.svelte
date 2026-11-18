@@ -8,7 +8,8 @@
   import Topbar from '$lib/components/Topbar.svelte';
   import Formats from '$lib/views/Formats.svelte';
   import Tasks from '$lib/views/Tasks.svelte';
-  import store, {consts, updateTasks, addFiles} from '$lib/store.svelte.js';
+  import store, {consts, updateTasks, updateTools, applyInitData, promptTool, addFiles} from '$lib/store.svelte.js';
+  import ToolManager from '$lib/components/ToolManager.svelte';
   let bootError = $state('');
   let revealing = $state(false);
   async function revealOutput(id) {
@@ -21,29 +22,27 @@
   let selected = $derived(store.tasks[store.selectedTask]);
   onMount(() => {
     let disposed = false;
+    const unsubscribeTools = window.electronAPI?.onTools?.(updateTools);
     const unsubscribe = window.electronAPI?.onTasks(updateTasks);
     (async () => {
       if (!window.electronAPI) throw new Error('Open FormatBay in Electron, not a browser.');
       const data = await window.electronAPI.getInitData();
       if (disposed) return;
-      Object.assign(consts, data);
-      store.tools = data.tools ?? [];
-      store.outputDirectory = data.outputDirectory;
-      updateTasks(data.taskSnapshot);
+      applyInitData(data);
       const saved = await window.store.get('favorite') ?? {};
-      store.favorite = Object.fromEntries(Object.entries(data.outputFormats).map(([type, formats]) =>
-        [type, Object.fromEntries(formats.map(format => [format, saved[type]?.[format] === true]))]));
+      store.favorite = saved;
       store.offlineMode = await window.store.get('offlineMode') ?? true;
       locale.set(navigator.language.toLowerCase().startsWith('zh') ? 'zh-cn' : 'en-us');
       store.init = true;
     })().catch(error => { bootError = error.message; });
-    return () => { disposed = true; unsubscribe?.(); };
+    return () => { disposed = true; unsubscribe?.(); unsubscribeTools?.(); };
   });
 </script>
 
 <main class="h-screen flex flex-col bg-background text-foreground">
   {#if store.init}
     <Topbar/>
+    <ToolManager/>
     {#if store.error}<div role="alert" class="p-3 bg-red-50 text-red-800 border-b">{store.error}</div>{/if}
     <div class="flex flex-1 min-h-0">
       <aside class="w-2/5 max-w-lg border-r flex flex-col min-h-0">
@@ -86,6 +85,7 @@
         {#if store.selectedFormat?.[1] === 'opus'}
           {#each store.tools.filter(tool => !tool.available && tool.optional) as tool}
             <p class="text-xs text-muted-foreground">{tool.id}: {$_('conversion.optionalTool')}</p>
+            <Button variant="outline" onclick={() => promptTool(tool.id)}>{$_('toolManager.manage')}</Button>
           {/each}
         {/if}
         {#if selected}

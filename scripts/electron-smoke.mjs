@@ -125,6 +125,42 @@ async function exerciseWorkflows({window, dialogState, reveals, temporary, error
   await select('encoder-select', 'opusenc');
   await click('favorite-opus', true);
   await until('window.store.get("favorite").then(value => value?.Audio?.opus === true)', 'favorite saved');
+  // Remove tool discovery inputs temporarily, not the tools themselves. The real
+  // manager/service/UI refresh against an empty PATH; no install/download mocks.
+  const pathEntries = Object.entries(process.env).filter(([key]) => key.toLowerCase() === 'path');
+  const previousFavorite = await js('window.store.get("favorite")');
+  try {
+    for (const [key] of pathEntries) delete process.env[key];
+    process.env.PATH = '';
+    await click('tool-manager-toggle');
+    await click('tools-refresh', true);
+    await until(`window.electronAPI.getInitData().then(data => data.outputFormats.Audio.length === 0 && data.toolManagement.tools.every(tool => tool.source === 'missing'))`, 'missing tool discovery');
+    await until(`!document.querySelector('${selector('tools-refresh')}').disabled`, 'tool refresh unlocks');
+    await click('format-opus');
+    await until(`Boolean(document.querySelector('${selector('tool-confirm-ffmpeg')}'))`, 'missing format opens installation disclosure');
+    assert.equal(await js(`document.querySelector('${selector('add-files')}').disabled`), true);
+    const disclosure = await js(`document.querySelector('${selector('tool-confirm-ffmpeg')}').textContent`);
+    assert.match(disclosure, /network/i);
+    assert.match(disclosure, /https:/);
+    assert.match(disclosure, /MiB/);
+    await click('tool-dismiss');
+    await until(`!document.querySelector('${selector('tool-confirm-ffmpeg')}')`, 'installation prompt dismissed');
+    const dismissed = await js('window.electronAPI.getInitData()');
+    assert.equal(dismissed.toolManagement.busy, false);
+    assert.ok(dismissed.toolManagement.tools.every(tool => tool.bytes === 0 && tool.source === 'missing' && ['missing','failed'].includes(tool.status)));
+    assert.deepEqual(await js('window.store.get("favorite")'), previousFavorite);
+  } finally {
+    delete process.env.PATH;
+    for (const [key, value] of pathEntries) process.env[key] = value;
+  }
+  await click('tools-refresh');
+  await until(`window.electronAPI.getInitData().then(data => data.targetEncoders?.opus?.includes('opusenc'))`, 'tool refresh restores encoder');
+  await until(`!document.querySelector('${selector('tools-refresh')}').disabled`, 'restored refresh unlocks');
+  assert.deepEqual(await js('window.store.get("favorite")'), previousFavorite);
+  assert.equal((await snapshot()).tasks.length, 0);
+  await click('tool-manager-toggle');
+  await click('format-opus');
+
   await click('format-wav');
   await until(`!document.querySelector('${selector('encoder-select')}')`, 'encoder hidden for WAV');
   await click('format-opus');
@@ -157,6 +193,18 @@ async function exerciseWorkflows({window, dialogState, reveals, temporary, error
   await click('add-files', true);
   await until(`document.querySelector('${selector('task-detail')}')?.dataset.status === 'ready'`, 'real source planned');
   assert.equal(dialogState.calls, importCalls + 1);
+  const pendingSnapshot = await snapshot();
+  const managementRejected = await js(`(async () => {
+    const errors = [];
+    for (const [method, id] of [['refreshTools'], ['installTool','opusenc'], ['removeTool','opusenc']]) {
+      try { await window.electronAPI[method](id); errors.push(null); }
+      catch (error) { errors.push(error.message); }
+    }
+    return errors;
+  })()`);
+  assert.ok(managementRejected.every(message => /pending conversion tasks/.test(message)), 'Pending plans must block tool mutation');
+  assert.deepEqual(await snapshot(), pendingSnapshot);
+
   assert.deepEqual(await js(`Array.from(document.querySelectorAll('${selector('route-step')}'), node => node.dataset.toolId)`), ['ffmpeg','opusenc']);
   assert.ok(await js(`Array.from(document.querySelectorAll('${selector('route-warning')}')).some(node => /video/i.test(node.textContent))`));
   await click('task-start', true);
@@ -207,7 +255,7 @@ async function exerciseWorkflows({window, dialogState, reveals, temporary, error
   await until('window.electronAPI.getInitData().then(data => data.taskSnapshot.tasks.length === 0)', 'cancelled tasks removed');
   assert.equal(dialogState.queue.length, 0);
   assert.deepEqual(errors, []);
-  console.log('Real Electron DOM workflow passed: target/opusenc/favorite/tabs/language, picker result cancellation/error, real FFmpeg→opusenc conversion, reveal boundary/missing-output error, bulk cancellation/removal. OS native dialogs and Explorer were stubbed, not tested.');
+  console.log('Real Electron DOM workflow passed: target/opusenc/favorite/tabs/language, missing-tool disclosure/dismiss/refresh and pending-task management guard, picker result cancellation/error, real FFmpeg→opusenc conversion, reveal boundary/missing-output error, bulk cancellation/removal. OS native dialogs and Explorer were stubbed, not tested.');
 }
 
 async function prepareSmoke(app) {
@@ -350,6 +398,13 @@ async function prepareSmoke(app) {
         expectReject(() => window.store.get('arbitrary-secret')),
         expectReject(() => window.store.set('outputDirectory','not-authorized')),
       ]);
+      for (const invalid of ['not-a-tool', {url:'https://not-authorized.invalid/tool.zip'}, null]) {
+        for (const method of ['installTool', 'removeTool', 'cancelToolInstall'])
+          rejects.push(await expectReject(() => api[method](invalid)));
+      }
+      const stopTools = api.onTools(() => {});
+      if (typeof stopTools !== 'function') throw new Error('Tool listener must be removable');
+      stopTools();
       const resetOutput = await api.resetOutputDirectory();
       return {title:document.title, heading:document.querySelector('main section h1').textContent,
         apiKeys:Object.keys(api).sort(), storeKeys:Object.keys(window.store).sort(),
@@ -359,7 +414,7 @@ async function prepareSmoke(app) {
     })()`), 15000, 'Real preload IPC assertions');
     assert.equal(result.title, 'FormatBay');
     assert.ok(result.heading.trim());
-    assert.deepEqual(result.apiKeys, ['addFiles','chooseOutputDirectory','closeApp','getInitData','minimizeApp','onTasks','resetOutputDirectory','revealOutput','taskAction'].sort());
+    assert.deepEqual(result.apiKeys, ['installTool','cancelToolInstall','removeTool','refreshTools','onTools','addFiles','chooseOutputDirectory','closeApp','getInitData','minimizeApp','onTasks','resetOutputDirectory','revealOutput','taskAction'].sort());
     assert.deepEqual(result.storeKeys, ['get','set']);
     assert.equal(result.requireType, 'undefined');
     assert.equal(result.processType, 'undefined');

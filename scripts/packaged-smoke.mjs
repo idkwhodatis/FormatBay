@@ -110,15 +110,52 @@ async function scenario(electron, executablePath, temporary, toolPath, missingTo
     const data=await page.evaluate(()=>window.electronAPI.getInitData());
     assert.deepEqual(data.taskSnapshot,{revision:0,tasks:[]});
     assert.equal(await page.getByTestId('add-files').isDisabled(),true);
+    assert.equal(data.tools.find(tool=>tool.id==='ffmpeg')?.available,true);
+    const ffmpeg = data.toolManagement.tools.find(tool=>tool.id==='ffmpeg');
+    assert.equal(ffmpeg.source,'bundled');
+    assert.equal(ffmpeg.canRemove,false);
+    assert.deepEqual([...data.outputFormats.Audio].sort(),['aac','flac','mp3','ogg','opus','wav']);
     if(missingTools) {
-      assert.deepEqual(data.outputFormats.Audio,[]);
-      assert.equal(data.tools.find(tool=>tool.id==='ffmpeg')?.available,false);
+      assert.equal(data.tools.find(tool=>tool.id==='opusenc')?.available,false);
       assert.deepEqual(data.targetEncoders,{});
-      assert.ok((await page.locator('main section').innerText()).includes('Install FFmpeg'));
-      console.log('PACKAGED_MISSING_TOOLS_PASSED: honest unavailable catalog, target-first UI disabled.');
+      const optional=data.toolManagement.tools.find(tool=>tool.id==='opusenc');
+      assert.equal(optional.source,'missing');assert.equal(optional.canInstall,true);
+      // No network until the second, explicit confirmation click. First dismiss.
+      await page.getByTestId('tool-manager-toggle').click();
+      assert.equal(await page.getByTestId('tool-remove-ffmpeg').count(),0);
+      await page.getByTestId('tool-install-opusenc').click();
+      const prompt=page.getByTestId('tool-confirm-opusenc');
+      await prompt.waitFor();
+      const disclosure=await prompt.innerText();
+      assert.ok(disclosure.includes(optional.downloadURL));
+      assert.ok(disclosure.includes(optional.licenseURL));
+      assert.match(disclosure,/network/i);assert.match(disclosure,/MiB/);
+      await page.getByTestId('tool-dismiss').click();
+      await prompt.waitFor({state:'detached'});
+      const dismissed=await page.evaluate(()=>window.electronAPI.getInitData());
+      assert.equal(dismissed.toolManagement.busy,false);
+      assert.equal(dismissed.toolManagement.tools.find(tool=>tool.id==='opusenc').bytes,0);
+      await page.getByTestId('tool-install-opusenc').click();
+      await page.getByTestId('tool-confirm-install-opusenc').click();
+      await page.waitForFunction(async()=>{
+        const data=await window.electronAPI.getInitData();
+        const tool=data.toolManagement.tools.find(tool=>tool.id==='opusenc');
+        if(tool.status==='failed'||tool.status==='cancelled')throw new Error(`Real opusenc installation failed: ${tool.error}`);
+        return tool.source==='managed' && data.targetEncoders.opus?.includes('opusenc');
+      },null,{timeout:120000});
+      const installed=await page.evaluate(()=>window.electronAPI.getInitData());
+      assert.equal(installed.toolManagement.tools.find(tool=>tool.id==='ffmpeg').source,'bundled');
+      assert.equal(installed.toolManagement.tools.find(tool=>tool.id==='opusenc').installedVersion,optional.version);
+      await access(path.join(profile,'tools','opusenc',optional.version,'install.json'));
+      await access(path.join(profile,'tools','opusenc',optional.version,'opusenc.exe'));
+      await page.getByTestId('tool-manager-toggle').click();
+      console.log('PACKAGED_MANAGED_INSTALL_PASSED: bundled FFmpeg with minimal PATH; dismissed prompt then real pinned opusenc download/extraction and catalog refresh.');
     } else {
-      assert.equal(data.tools.find(tool=>tool.id==='ffmpeg')?.available,true);
       assert.ok(data.targetEncoders.opus?.includes('opusenc'));
+      assert.equal(data.toolManagement.tools.find(tool=>tool.id==='opusenc').source,'path');
+      assert.equal(data.toolManagement.tools.find(tool=>tool.id==='opusenc').canRemove,false);
+    }
+    {
       const input=path.join(working,'打包 video & input.mkv');
       await runTool('ffmpeg',['-v','error','-f','lavfi','-i','color=c=black:s=16x16:r=2:d=1',
         '-f','lavfi','-i','sine=frequency=440:duration=1','-c:v','ffv1','-c:a','pcm_s16le','-shortest',input],{cwd:working});
@@ -155,6 +192,22 @@ async function scenario(electron, executablePath, temporary, toolPath, missingTo
       await page.evaluate(()=>window.store.set('offlineMode',true));
       assert.equal(await page.evaluate(()=>window.store.get('offlineMode')),true);
       assert.equal(JSON.parse(await readFile(path.join(profile,'config.json'),'utf8')).offlineMode,true);
+      if(missingTools) {
+        const outputBytes=await readFile(task.outputPath);
+        await page.getByTestId('tool-manager-toggle').click();
+        await page.getByTestId('tool-remove-opusenc').click();
+        await page.waitForFunction(async()=>{
+          const data=await window.electronAPI.getInitData();
+          return data.toolManagement.tools.find(tool=>tool.id==='opusenc').source==='missing' && !data.targetEncoders.opus?.includes('opusenc');
+        },null,{timeout:30000});
+        const removed=await page.evaluate(()=>window.electronAPI.getInitData());
+        assert.equal(removed.toolManagement.tools.find(tool=>tool.id==='ffmpeg').source,'bundled');
+        assert.equal(removed.toolManagement.tools.find(tool=>tool.id==='ffmpeg').canRemove,false);
+        assert.equal(removed.taskSnapshot.tasks[0].status,'done');
+        assert.deepEqual(await readFile(task.outputPath),outputBytes);
+        await assert.rejects(access(path.join(profile,'tools','opusenc',data.toolManagement.tools.find(tool=>tool.id==='opusenc').version,'opusenc.exe')));
+        console.log('PACKAGED_MANAGED_REMOVE_PASSED: optional managed encoder removed; bundled FFmpeg and completed output preserved.');
+      }
       console.log('PACKAGED_CONVERSION_PASSED: actual app.asar UI/IPC FFmpeg→opusenc output decoded; source preserved; isolated settings verified. Native picker/Explorer boundaries stubbed.');
     }
     assert.deepEqual(errors,[]);
