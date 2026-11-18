@@ -180,7 +180,7 @@ async function main() {
   try {
     // Relocate the complete portable directory away from the checkout, preserving
     // only the packaged resources and using empty working directories for launch.
-    const portable=path.join(temporary,'portable');
+    const portable=path.join(temporary,'portable ~ space # % 中文');
     await cp(path.dirname(executable),portable,{recursive:true,errorOnExist:true});
     const relocated=path.join(portable,path.basename(executable));
     const systemRoot=process.env.SystemRoot??'C:\\Windows';

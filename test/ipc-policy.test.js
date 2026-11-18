@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {pathToFileURL, fileURLToPath} from 'node:url';
 import {assertTrustedSender, validateTarget, validateSetting, runTaskActionBatch} from '../src/ipc-policy.js';
 
 test('IPC accepts only current window main frame and exact document URL', () => {
@@ -14,6 +15,28 @@ test('IPC accepts only current window main frame and exact document URL', () => 
   assert.throws(() => assertTrustedSender(event, win, url, true));
   assert.throws(() => assertTrustedSender(event, null, url));
   assert.throws(() => assertTrustedSender({...event, senderFrame: undefined}, win, url));
+});
+test('Windows packaged document URLs round-trip special path characters and keep exact IPC checks', () => {
+  const entry = String.raw`C:\Users\RUNNER~1\AppData\Local\Temp\portable ~ space # % 中文\resources\app.asar\src\frontend\dist\index.html`;
+  // Node's WHATWG URL is used for both loadURL and the trusted sender URL.
+  // Legacy Electron loadFile formatting left ~ unescaped and broke this equality.
+  const allowedURL = pathToFileURL(entry, {windows: true}).href;
+  assert.equal(allowedURL, 'file:///C:/Users/RUNNER%7E1/AppData/Local/Temp/portable%20%7E%20space%20%23%20%25%20%E4%B8%AD%E6%96%87/resources/app.asar/src/frontend/dist/index.html');
+  assert.equal(fileURLToPath(allowedURL, {windows: true}), entry);
+  assert.equal(new URL(allowedURL).href, allowedURL);
+  const frame = {url: allowedURL};
+  const win = {webContents: {mainFrame: frame}};
+  const event = {sender: win.webContents, senderFrame: frame};
+  assert.doesNotThrow(() => assertTrustedSender(event, win, allowedURL));
+  for (const untrustedURL of [
+    allowedURL.replaceAll('%7E', '~'), // equivalent path, but not the exact loaded URL
+    `${allowedURL}#fragment`,
+    `${allowedURL}?query=1`,
+    allowedURL.replace('index.html', 'other.html'),
+  ]) {
+    frame.url = untrustedURL;
+    assert.throws(() => assertTrustedSender(event, win, allowedURL));
+  }
 });
 test('target strips extra renderer authority and rejects unsupported formats', () => {
   assert.deepEqual(validateTarget({kind:'audio',format:'wav',command:'rm',path:'/etc/passwd'}, {Audio:['wav']}), {kind:'audio',format:'wav'});
