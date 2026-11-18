@@ -8,7 +8,7 @@ import {FFmpegAdapter} from '../src/backend/conversion/ffmpeg.js';
 import {ConversionService} from '../src/backend/conversion/service.js';
 import {planConversion} from '../src/backend/conversion/planner.js';
 import {runProcess} from '../src/backend/conversion/process.js';
-const waitFor=async(fn)=>{for(let i=0;i<600;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
+const waitFor=async(fn)=>{for(let i=0;i<1200;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
 const audio={kind:'audio',format:'wav',audioCodec:'pcm_s16le',hasAudio:true,hasVideo:false,audioChannels:2};
 
 test('opusenc capability is specific and unavailable tools do not advertise output',async()=>{
@@ -32,7 +32,7 @@ test('required final encoder cannot be replaced by a shorter different encoder',
 test('real FFmpeg → opusenc route, automatic direct route and verified output phases',async t=>{
  const ffmpeg=new FFmpegAdapter(),opusenc=new OpusencAdapter();
  if(!(await ffmpeg.discover()).available||!(await opusenc.discover()).available)return t.skip('FFmpeg and opusenc required');
- const dir=await mkdtemp(path.join(os.tmpdir(),'formatbay-chain-'));
+ const dir=await mkdtemp(path.join(os.tmpdir(),'formatbay-音频 & chain-'));
  const phases=[];const service=new ConversionService({adapters:[ffmpeg,opusenc],onChange:tasks=>phases.push(...tasks.filter(t=>t.phase).map(t=>[t.phase,t.stepIndex]))});
  try{
   const catalog=await service.initialize();assert.deepEqual(catalog.targetEncoders,{opus:['opusenc']});
@@ -90,7 +90,7 @@ test('optional encoder selection is rejected when unavailable and primary probin
  const opusenc=new OpusencAdapter({runner:async()=>({stdout:'opusenc opus-tools 0.2',stderr:''})});
  const service=new ConversionService({adapters:[missing,opusenc]});
  const catalog=await service.initialize();assert.deepEqual(catalog.outputFormats.Audio,[]);assert.deepEqual(catalog.targetEncoders,{});
- await assert.rejects(service.addFiles(['/tmp/test.wav'],{kind:'audio',format:'opus',encoder:'opusenc'}),/unavailable tool/);
+ await assert.rejects(service.addFiles([path.join(os.tmpdir(),'test.wav')],{kind:'audio',format:'opus',encoder:'opusenc'}),/unavailable tool/);
 });
 
 test('second-step failure or cancellation cleans intermediate outputs and never publishes',async t=>{

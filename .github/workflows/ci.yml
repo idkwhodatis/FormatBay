@@ -16,7 +16,8 @@ jobs:
   conversion:
     name: Real media tools, tests and production build
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Ubuntu mirror downloads can take over 13 minutes; keep full tests intact.
+    timeout-minutes: 25
     env:
       # Build/tests do not claim native Electron GUI coverage or need its binary.
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'

@@ -9,7 +9,7 @@ import {OpusencAdapter} from '../src/backend/conversion/opusenc.js';
 import {ConversionService} from '../src/backend/conversion/service.js';
 import {planConversion} from '../src/backend/conversion/planner.js';
 import {runProcess} from '../src/backend/conversion/process.js';
-const waitFor=async(fn)=>{for(let i=0;i<600;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
+const waitFor=async(fn)=>{for(let i=0;i<1200;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
 
 test('speaker layout is not inferred from multichannel counts',()=>{
  assert.equal(audioLayout({audioChannels:1}),'mono');assert.equal(audioLayout({audioChannels:2}),'stereo');

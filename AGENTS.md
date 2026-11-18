@@ -125,7 +125,9 @@ actually produce it. Report unrun native UI/platform checks explicitly.
   the same monotonic revision. Renderer ignores delayed older/equal snapshots.
 - Shared UI locks cover tasks across tab remounts, favorite duplicates and file
   dialogs. Tests cover stale init/action replies and removal resurrection.
-- CI is Linux non-GUI coverage, not native desktop/packaging validation.
+- Linux CI remains non-GUI. `windows.yml` adds the same real-tool suite plus
+  isolated native Electron launch/renderer/preload/IPC smoke. Manual dialog,
+  visual interaction and packaging acceptance are still separate.
 
 Windows acceptance requirements and unverified native coverage are tracked in
 `Agents/VALIDATION.md`. GPU/hardware encoding is future scope, not implemented.

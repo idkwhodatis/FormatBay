@@ -15,9 +15,23 @@ task state is emitted only after temporary-file cleanup settles.
 Process-wrapper regressions cover a child ignoring graceful termination, bounded
 stdout retention during forced termination, progress-consumer exceptions, and
 literal argv preservation for Windows-style paths, Unicode and shell characters.
-The argv test runs on Linux; it is not a Windows process-launch test.
+The same suite is also run by the Windows workflow, so successful Windows CI
+adds native process/argv, NTFS publication, Unicode-path and real conversion
+coverage; Linux results alone are not evidence of Windows execution.
 
-## Windows acceptance checklist (not yet executed)
+## Windows CI and remaining manual acceptance
+
+`.github/workflows/windows.yml` runs the complete no-skip suite on Windows Server
+2025 with pinned, checksum-verified FFmpeg and opus-tools distributions linked
+from their upstream download pages. It builds the renderer and launches the
+locked official Electron binary using an isolated temporary profile. The smoke
+harness checks the production window/renderer, sandboxed preload, real IPC and
+normal application shutdown; it adds no test hooks to production code.
+
+A successful smoke is not a visual review or an interactive native-dialog test.
+Report the observed CI result, not just the existence of this workflow.
+
+### Manual checks still required
 
 The owner uses Windows. Preserve argv-array spawning (`shell:false`),
 `windowsHide:true`, Node path APIs, and both separators in renderer display.

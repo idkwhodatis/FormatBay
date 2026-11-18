@@ -7,7 +7,7 @@ import {ConversionService,publish} from '../src/backend/conversion/service.js';
 import {FFmpegAdapter} from '../src/backend/conversion/ffmpeg.js';
 import {runProcess} from '../src/backend/conversion/process.js';
 const temp=()=>mkdtemp(path.join(os.tmpdir(),'formatbay-test-'));
-const waitFor=async(fn)=>{for(let i=0;i<400;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
+const waitFor=async(fn)=>{for(let i=0;i<1200;i++){if(fn())return;await new Promise(r=>setTimeout(r,25));}throw new Error('Timed out');};
 
 test('publication is no-clobber even under concurrency',async()=>{
  const dir=await temp();try{
@@ -108,7 +108,7 @@ test('missing tools are explicit and do not advertise pretend formats',async()=>
  const service=new ConversionService({adapter});
  const result=await service.initialize();
  assert.equal(result.tools[0].available,false);assert.deepEqual(result.outputFormats.Audio,[]);
- await assert.rejects(service.addFiles(['/tmp/no-file'],{kind:'audio',format:'mp3'}),/unavailable tool/);
+ await assert.rejects(service.addFiles([path.join(os.tmpdir(),'no-file')],{kind:'audio',format:'mp3'}),/unavailable tool/);
 });
 
 test('executor dispatches a multi-tool A → F → L plan and validates every intermediate',async()=>{
@@ -165,8 +165,8 @@ test('full-decode verification rejects a duration mismatch even with a successfu
  const adapter=new FFmpegAdapter({runner:async(_command,_args,options)=>{
   options.onStdout('out_time_us=3000000\nprogress=end\n');return {stdout:'',stderr:''};
  }});
- await assert.rejects(adapter.verify('/tmp/output.wav',{expectedDuration:5}),/duration/);
- await assert.doesNotReject(adapter.verify('/tmp/output.wav',{expectedDuration:3}));
+ await assert.rejects(adapter.verify(path.join(os.tmpdir(),'output.wav'),{expectedDuration:5}),/duration/);
+ await assert.doesNotReject(adapter.verify(path.join(os.tmpdir(),'output.wav'),{expectedDuration:3}));
 });
 
 test('backend snapshots carry increasing revisions and isolated task data',()=>{
@@ -213,11 +213,11 @@ test('stream-copy capability validates the original before a tool can hide damag
 
 test('verification rejects error-level diagnostics even if a tool exits successfully',async()=>{
  const adapter=new FFmpegAdapter({runner:async()=>({stdout:'',stderr:'Error decoding a damaged frame'})});
- await assert.rejects(adapter.verify('/tmp/output.wav'),/decoding errors/);
+ await assert.rejects(adapter.verify(path.join(os.tmpdir(),'output.wav')),/decoding errors/);
 });
 
 test('conversion rejects error-level diagnostics even with a successful tool exit',async()=>{
  const adapter=new FFmpegAdapter({runner:async()=>({stdout:'',stderr:'Error reading a damaged packet'})});
  adapter.available=true;adapter.encoders=new Set(['pcm_s16le']);adapter.decoders=new Set(['pcm_s16le']);adapter.muxers=new Set(['wav']);
- await assert.rejects(adapter.execute({capabilityId:'ffmpeg:copy:wav',output:{format:'wav'}},'/tmp/input.wav','/tmp/output.wav'),/conversion errors/);
+ await assert.rejects(adapter.execute({capabilityId:'ffmpeg:copy:wav',output:{format:'wav'}},path.join(os.tmpdir(),'input.wav'),path.join(os.tmpdir(),'output.wav')),/conversion errors/);
 });

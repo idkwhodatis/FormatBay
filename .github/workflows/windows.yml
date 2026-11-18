@@ -1,0 +1,71 @@
+name: Windows conversions and Electron smoke
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formatbay-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows real tools, paths and production Electron
+    runs-on: windows-2025
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: '1.4.4'
+      - name: Install pinned media tools from upstream-linked distributions
+        run: ./scripts/install-windows-tools.ps1
+      - name: Install locked dependencies and official Electron binary
+        run: |
+          bun install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location src/frontend
+          bun install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+      - name: Verify syntax, locale keys and required media capabilities
+        run: |
+          node scripts/check.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/check-tools.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test native processes, paths and real conversions without skips
+        run: |
+          node --test --test-reporter=tap | Tee-Object -FilePath test-results.tap
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Select-String -Path test-results.tap -Pattern '^# skipped 0$' -Quiet)) {
+            throw 'Integration tests must not be skipped'
+          }
+      - name: Build production renderer
+        run: |
+          bun run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Launch production Electron and verify renderer, preload and IPC
+        run: |
+          node scripts/electron-smoke.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify lockfiles and source remain unchanged
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

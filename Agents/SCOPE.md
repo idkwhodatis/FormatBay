@@ -15,6 +15,9 @@
 - Node tests including real tiny synthetic media fixtures, production build.
 - Linux GitHub Actions workflow with real media tools, locked installs, skip-free
   integration enforcement, syntax/locale checks and build (no native GUI claim).
+- Windows workflow runs the same suite with checksum-pinned upstream-linked
+  tools plus isolated production Electron smoke; native interactive/visual
+  acceptance remains separate from automated launch/IPC checks.
 - Revision-aware task updates and shared UI operation locks.
 
 ## Explicit limitations
