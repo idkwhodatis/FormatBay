@@ -48,7 +48,7 @@ export class FFmpegAdapter {
         'Metadata, chapters and embedded artwork are not retained.',
       ];
       return [
-        {id:`ffmpeg:copy:${format}`,toolId:'ffmpeg',toolVersion:this.version,label:`Copy audio to ${format.toUpperCase()} (no re-encoding)`,available:true,loss:0,
+        {id:`ffmpeg:copy:${format}`,toolId:'ffmpeg',toolVersion:this.version,label:`Copy audio to ${format.toUpperCase()} (no re-encoding)`,available:true,verifyInput:true,loss:0,
           accepts:state=>state.hasAudio && state.audioCodec===spec.codec,output,warnings},
         {id:`ffmpeg:encode:${format}`,toolId:'ffmpeg',toolVersion:this.version,label:`Encode audio to ${format.toUpperCase()}`,available:true,loss:spec.loss || (format==='wav' ? 0.1 : 0),
           accepts:state=>state.hasAudio && this.canDecode(state.audioCodec),output:encodedOutput,
@@ -78,12 +78,13 @@ export class FFmpegAdapter {
     let buffer='',decodedDuration=0;
     // Header probing alone accepts damaged/partially decodable media. Decode the
     // entire output before publishing, including stream-copy routes.
-    await this.runner(this.ffmpeg,['-hide_banner','-nostdin','-v','error','-xerror',
+    const result=await this.runner(this.ffmpeg,['-hide_banner','-nostdin','-v','error','-xerror',
       '-err_detect','explode',...localInput,'-i',path,'-map','0:a:0','-vn','-sn','-dn',
       '-progress','pipe:1','-f','null','-'],{signal,timeout:24*60*60*1000,onStdout:chunk=>{
         buffer+=chunk;const lines=buffer.split('\n');buffer=lines.pop().slice(-4096);
         for(const line of lines){const match=/^out_time_us=(\d+)/.exec(line);if(match)decodedDuration=Math.max(decodedDuration,Number(match[1])/1e6);}
       }});
+    if (result.stderr?.trim()) throw new Error('Tool reported decoding errors: '+result.stderr.trim().slice(-2000));
     if (expectedDuration>0 && Math.abs(decodedDuration-expectedDuration)>Math.max(.5,expectedDuration*.05)) {
       throw new Error('Decoded output duration does not match the expected audio duration');
     }
@@ -93,7 +94,7 @@ export class FFmpegAdapter {
     if (!spec || !this.capabilities().some(edge=>edge.id===step.capabilityId)) throw new Error('Unsupported conversion step');
     const copy=step.capabilityId===`ffmpeg:copy:${format}`;
     let buffer='';
-    await this.runner(this.ffmpeg,['-hide_banner','-nostdin','-v','error','-xerror','-err_detect','explode','-n',...localInput,'-i',inputPath,
+    const result=await this.runner(this.ffmpeg,['-hide_banner','-nostdin','-v','error','-xerror','-err_detect','explode','-n',...localInput,'-i',inputPath,
       '-map','0:a:0','-vn','-sn','-dn','-map_metadata','-1','-map_chapters','-1',
       '-c:a',copy?'copy':spec.encoder,
       ...(!copy?['-ac',String(step.output.audioChannels)]:[]),
@@ -105,5 +106,6 @@ export class FFmpegAdapter {
           for(const line of lines){const match=/^out_time_us=(\d+)/.exec(line);if(match&&duration)onProgress?.(Math.min(.99,Number(match[1])/1e6/duration));}
         },
       });
+    if (result.stderr?.trim()) throw new Error('Tool reported conversion errors: '+result.stderr.trim().slice(-2000));
   }
 }

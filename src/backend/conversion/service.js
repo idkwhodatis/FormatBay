@@ -117,9 +117,10 @@ export class ConversionService {
         const output=path.join(temp,`step-${index}.${step.output.format}`);
         const executor=this.toolAdapters.get(step.toolId);
         if (!executor) throw new Error('Planned tool is no longer available');
-        // External encoders may recover corrupt input silently. Validate the
-        // original stream before their first step; intermediates were checked.
-        if (index===0 && executor!==this.adapter) {
+        // External encoders and stream-copy demuxers may recover/drop damaged
+        // packets silently. Validate the original stream before those paths;
+        // every intermediate was already strictly verified.
+        if (index===0 && (executor!==this.adapter || step.verifyInput)) {
           task.phase='verifying';this.emit();
           await this.adapter.verify?.(current,{signal,expectedDuration:probe.audioDuration||0});
           task.phase='converting';this.emit();

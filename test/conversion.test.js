@@ -197,3 +197,27 @@ test('terminal snapshot is published only after cleanup settles',async()=>{
   assert.equal((await readdir(dir)).some(name=>name.startsWith('.formatbay-')),false);
  }finally{release();await service.shutdown();await rm(dir,{recursive:true,force:true});}
 });
+
+test('stream-copy capability validates the original before a tool can hide damaged packets',async()=>{
+ const dir=await temp(),input=path.join(dir,'in.a');await writeFile(input,'damaged');let executed=false;
+ const state={kind:'audio',format:'a',hasAudio:true,hasVideo:false,audioCodec:'a'};
+ const adapter={discover:async()=>({id:'fake',available:true}),formats:()=>['a'],capabilities:()=>[{id:'copy',toolId:'fake',label:'copy',loss:0,verifyInput:true,accepts:()=>true,output:()=>state}],
+ probe:async()=>({state,size:7,duration:1}),verify:async()=>{throw new Error('Damaged original');},execute:async()=>{executed=true;}};
+ const service=new ConversionService({adapter});
+ try{
+  await service.initialize();await service.addFiles([input],{kind:'audio',format:'a'});service.start(service.list()[0].id);
+  await waitFor(()=>service.list()[0].status==='failed');assert.equal(executed,false);assert.match(service.list()[0].error,/Damaged original/);
+  assert.equal(service.list()[0].outputPath,null);assert.deepEqual(await readdir(dir),['in.a']);
+ }finally{await service.shutdown();await rm(dir,{recursive:true,force:true});}
+});
+
+test('verification rejects error-level diagnostics even if a tool exits successfully',async()=>{
+ const adapter=new FFmpegAdapter({runner:async()=>({stdout:'',stderr:'Error decoding a damaged frame'})});
+ await assert.rejects(adapter.verify('/tmp/output.wav'),/decoding errors/);
+});
+
+test('conversion rejects error-level diagnostics even with a successful tool exit',async()=>{
+ const adapter=new FFmpegAdapter({runner:async()=>({stdout:'',stderr:'Error reading a damaged packet'})});
+ adapter.available=true;adapter.encoders=new Set(['pcm_s16le']);adapter.decoders=new Set(['pcm_s16le']);adapter.muxers=new Set(['wav']);
+ await assert.rejects(adapter.execute({capabilityId:'ffmpeg:copy:wav',output:{format:'wav'}},'/tmp/input.wav','/tmp/output.wav'),/conversion errors/);
+});

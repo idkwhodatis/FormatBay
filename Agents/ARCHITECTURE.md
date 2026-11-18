@@ -66,6 +66,6 @@ channel count. The planned channel count is verified in the output.
 FLAC input states and a lossy Opus edge. Startup exposes `targetEncoders` separately
 from target formats. Narrow IPC accepts only advertised `encoder: opusenc` on an
 Opus target. The planner includes the final-tool constraint in goal acceptance and
-search-state pruning. An original input to an external encoder is fully validated
+search-state pruning. An original input to an external encoder or stream-copy route is fully validated
 first; intermediates are already validated. Tool errors/cancel never publish partial
 output. Task `phase` and `stepIndex` expose truthful per-step UI progress.

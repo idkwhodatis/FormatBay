@@ -95,8 +95,8 @@ may contain cycles; an individual executable plan must be bounded and acyclic.
    output management, cancellation, failure cleanup and integration tests.
 4. Wire target-first catalog, file selection, live task actions and route/warnings
    into the existing Svelte UI; remove dummy tasks and the placeholder detail pane.
-5. Independent review and final checks. Commit/push only outside the owner's
-   Toronto working hours (Mon 08:30–18:00, Tue–Fri 09:00–18:00); no merge.
+5. Independent review and final checks. Respect the owner's publication-time
+   instructions; no merge without explicit authorization.
 
 Initial deliverable deliberately focuses on real audio outputs from audio/video
 inputs, with a generic multi-tool planner. OCR/data, video output encoding, multi-output/fan-out, packaging and a global topology
@@ -126,3 +126,6 @@ actually produce it. Report unrun native UI/platform checks explicitly.
 - Shared UI locks cover tasks across tab remounts, favorite duplicates and file
   dialogs. Tests cover stale init/action replies and removal resurrection.
 - CI is Linux non-GUI coverage, not native desktop/packaging validation.
+
+Windows acceptance requirements and unverified native coverage are tracked in
+`Agents/VALIDATION.md`. GPU/hardware encoding is future scope, not implemented.
