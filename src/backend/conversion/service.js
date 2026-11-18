@@ -8,10 +8,11 @@ import {planConversion,matchesTarget} from './planner.js';
 const statuses=new Set(['ready','running','queued']);
 /** Backend-owned tasks. The renderer can never supply an executable plan. */
 export class ConversionService {
-  constructor({onChange=()=>{},adapter,adapters}={}) {
+  constructor({onChange=()=>{},adapter,adapters,cleanup=directory=>rm(directory,{recursive:true,force:true})}={}) {
     adapters ??= adapter?[adapter]:[new FFmpegAdapter(),new OpusencAdapter()];
+    this.cleanup=cleanup;
     this.adapter=adapters[0];this.adapters=adapters;this.toolAdapters=new Map();this.formats=[];this.onChange=onChange;this.tasks=new Map();this.internal=new Map();
-    this.outputDirectory=null;this.active=null;this.queue=[];this.closing=false;
+    this.revision=0;this.outputDirectory=null;this.active=null;this.queue=[];this.closing=false;
     this.addChain=Promise.resolve();this.importController=new AbortController();
   }
   async initialize() {
@@ -35,7 +36,8 @@ export class ConversionService {
     return {outputFormats:{Audio:this.formats},tools,targetEncoders:this.targetEncoders};
   }
   list() {return structuredClone([...this.tasks.values()]);}
-  emit() {this.onChange(this.list());}
+  snapshot() {return {revision:this.revision,tasks:this.list()};}
+  emit() {this.revision++;this.onChange(this.list(),this.revision);}
   async setOutputDirectory(directory) {
     if (directory===null) {this.outputDirectory=null;return;}
     const canonical=await realpath(directory);
@@ -96,7 +98,7 @@ export class ConversionService {
     const task=this.tasks.get(id),internal=this.internal.get(id);
     if (!task || !internal || task.status!=='queued') return;
     const controller=new AbortController();internal.controller=controller;
-    const {signal}=controller;let temp;
+    const {signal}=controller;let temp,outcome;
     task.status='running';this.emit();
     try {
       // Reprobe at execution time; files may have changed while the task waited.
@@ -132,15 +134,17 @@ export class ConversionService {
         current=output;
       }
       if (signal.aborted) throw new Error('Cancelled');
-      task.outputPath=await publish(current,directory,path.parse(internal.inputPath).name,task.target.format,signal);
-      task.status='done';task.progress=100;
-    } catch(error) {task.status=signal.aborted?'cancelled':'failed';task.error=signal.aborted?null:error.message;}
+      const outputPath=await publish(current,directory,path.parse(internal.inputPath).name,task.target.format,signal);
+      outcome={status:'done',progress:100,outputPath};
+    } catch(error) {outcome={status:signal.aborted?'cancelled':'failed',error:signal.aborted?null:error.message};}
     finally {
       if (temp) {
-        try {await rm(temp,{recursive:true,force:true});}
-        catch {task.error=(task.error?task.error+' ':'')+'Temporary files could not be cleaned up: '+temp;}
+        try {await this.cleanup(temp);}
+        catch {outcome.error=(outcome.error?outcome.error+' ':'')+'Temporary files could not be cleaned up: '+temp;}
       }
-      delete internal.controller;delete task.phase;this.emit();
+      // A terminal snapshot means cleanup is settled, not merely that the tool
+      // exited. Never expose a terminal mutation under an older revision.
+      Object.assign(task,outcome);delete internal.controller;delete task.phase;this.emit();
     }
   }
   async shutdown() {

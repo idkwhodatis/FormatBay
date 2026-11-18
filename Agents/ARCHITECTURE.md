@@ -27,7 +27,8 @@ files per dialog/500 tasks, folders are non-recursive.
 - `conversion/service.js`: backend-owned tasks and serial queue. Imports probe and
   plan; execution rechecks file identity and route. Each step is probed and fully decoded with fail-on-error; known audio durations
   are checked with a padding tolerance before publication.
-  Temps live on the output volume. Final publication uses exclusive hard links,
+  Temps live on the output volume. Terminal task status and its revision are
+  published only after cleanup settles, including cleanup warnings. Final publication uses exclusive hard links,
   never overwriting source or existing destinations. Filesystems without hard-link
   support fail explicitly. Cancellation/failure cleans temps; close aborts work.
 
@@ -36,7 +37,9 @@ files per dialog/500 tasks, folders are non-recursive.
 Ready → queued → running → done/failed/cancelled. Unreachable/bad inputs become
 blocked. Remove/re-add to retry or replan. Output-directory selection applies to
 new imports, default beside input (reset available in the toolbar). Running-task removal requires cancellation.
-Task snapshots include ID, inputPath, target, plan, status, progress, output/error.
+Task snapshots are `{revision,tasks}` envelopes. Each task includes ID, inputPath,
+target, plan, status, progress and output/error. Renderer ignores revisions already
+applied, preventing late init/action replies from reverting newer pushed state.
 
 Renderer keeps target selection independent from task target. Choose a target,
 add files, inspect route/warnings, then start. Tasks toolbar provides individual

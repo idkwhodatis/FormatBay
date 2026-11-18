@@ -39,14 +39,14 @@ URL. New windows/navigation and unrequested permissions are denied.
 
 | Channel | Direction | Payload/result |
 | --- | --- | --- |
-| app:initData | invoke | catalog, tool availability, tasks, outputDirectory |
+| app:initData | invoke | catalog, tool availability, taskSnapshot, outputDirectory |
 | app:close / app:minimize | send | no payload |
 | store:get / store:set | invoke | allowlisted favorite/offlineMode only |
 | conversion:add | invoke | target {kind:audio,format,encoder?}, folder boolean; native dialog selects paths |
 | conversion:outputDirectory | invoke | native output-directory picker |
 | conversion:resetOutputDirectory | invoke | restore beside-input output for future imports |
 | conversion:action | invoke | start/cancel/remove + backend task ID |
-| conversion:tasks | push | task snapshots, no privileged event exposed |
+| conversion:tasks | push | {revision,tasks}, no privileged event exposed |
 
 ## File ownership
 
@@ -114,3 +114,15 @@ actually produce it. Report unrun native UI/platform checks explicitly.
   and final output. Show current step and conversion/verification phase.
 - Real video → FFmpeg FLAC → opusenc Opus, unavailable tools, damaged input,
   second-step failure and cancellation must be covered by tests.
+
+### Continuous integration and stale-update protection
+
+- `.github/workflows/ci.yml` runs on pushes/PRs with read-only permissions and
+  pinned action SHAs, Node/Bun versions, locked installs and real FFmpeg/opusenc.
+- `bun run check` verifies backend/bridge syntax and locale parity. CI additionally
+  runs `bun run check:tools` and fails if any integration test is skipped.
+- `snapshot()` returns `{revision,tasks}`; backend pushes and command replies use
+  the same monotonic revision. Renderer ignores delayed older/equal snapshots.
+- Shared UI locks cover tasks across tab remounts, favorite duplicates and file
+  dialogs. Tests cover stale init/action replies and removal resurrection.
+- CI is Linux non-GUI coverage, not native desktop/packaging validation.

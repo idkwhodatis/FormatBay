@@ -168,3 +168,32 @@ test('full-decode verification rejects a duration mismatch even with a successfu
  await assert.rejects(adapter.verify('/tmp/output.wav',{expectedDuration:5}),/duration/);
  await assert.doesNotReject(adapter.verify('/tmp/output.wav',{expectedDuration:3}));
 });
+
+test('backend snapshots carry increasing revisions and isolated task data',()=>{
+ const pushes=[];const service=new ConversionService({onChange:(tasks,revision)=>pushes.push({tasks,revision})});
+ assert.deepEqual(service.snapshot(),{revision:0,tasks:[]});
+ service.tasks.set('test',{id:'test',status:'ready'});service.emit();
+ const first=service.snapshot();assert.equal(first.revision,1);assert.equal(pushes[0].revision,1);
+ first.tasks[0].status='tampered';assert.equal(service.list()[0].status,'ready');
+ service.cancel('test');assert.equal(service.snapshot().revision,2);assert.equal(service.snapshot().tasks[0].status,'cancelled');
+ service.remove('test');assert.equal(service.snapshot().revision,3);assert.deepEqual(service.snapshot().tasks,[]);
+ assert.deepEqual(pushes.map(item=>item.revision),[1,2,3]);
+});
+
+test('terminal snapshot is published only after cleanup settles',async()=>{
+ const dir=await temp(),input=path.join(dir,'in.a');await writeFile(input,'source');
+ const state={kind:'audio',format:'a',hasAudio:true,hasVideo:false,audioCodec:'a'},output={...state,format:'b',audioCodec:'b'};
+ const adapter={discover:async()=>({id:'fake',available:true}),formats:()=>['b'],capabilities:()=>[{id:'fake',toolId:'fake',label:'fake',loss:0,accepts:s=>s.format==='a',output:()=>output}],
+ probe:async file=>({state:file===input?state:output,size:6,duration:1}),execute:async(_step,_input,destination)=>writeFile(destination,'output')};
+ let release,cleaning=false;const gate=new Promise(resolve=>{release=resolve;});const pushes=[];
+ const service=new ConversionService({adapter,onChange:(tasks,revision)=>pushes.push({tasks,revision}),cleanup:async directory=>{cleaning=true;await gate;await rm(directory,{recursive:true,force:true});}});
+ try {
+  await service.initialize();await service.addFiles([input],{kind:'audio',format:'b'});const id=service.list()[0].id;service.start(id);
+  await waitFor(()=>cleaning);
+  const pending=service.snapshot();assert.equal(pending.tasks[0].status,'running');assert.equal(pending.tasks[0].outputPath,null);
+  assert.deepEqual(pending,pushes.at(-1));assert.throws(()=>service.remove(id),/Cancel/);
+  release();await waitFor(()=>service.list()[0].status==='done');
+  const settled=service.snapshot();assert.ok(settled.revision>pending.revision);assert.ok(settled.tasks[0].outputPath);
+  assert.equal((await readdir(dir)).some(name=>name.startsWith('.formatbay-')),false);
+ }finally{release();await service.shutdown();await rm(dir,{recursive:true,force:true});}
+});

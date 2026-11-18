@@ -39,6 +39,10 @@ bun run start
 Development uses two terminals: frontend `bun run dev` from `src/frontend`, and
 root `bun run dev`. Tests: `bun run test`. Real-media tests explicitly skip when
 FFmpeg/ffprobe is unavailable; opusenc integration tests also require opus-tools.
+`bun run check` validates syntax/locale keys; `bun run check:tools` requires all
+real integration capabilities. Linux CI uses pinned Node/Bun and frozen lockfiles,
+runs real conversions with no skipped tests, then builds the renderer. This is
+not native Electron GUI or packaging validation.
 
 Outputs default beside each input as `name-converted.ext`, with numeric suffixes
 when necessary. Choosing an output folder applies to newly imported tasks. Folder

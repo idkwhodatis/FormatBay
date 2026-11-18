@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resetOutputDirectory: () => ipcRenderer.invoke('conversion:resetOutputDirectory'),
   taskAction: (action, id) => ipcRenderer.invoke('conversion:action', action, id),
   onTasks: callback => {
-    const listener = (_event, tasks) => callback(tasks);
+    const listener = (_event, snapshot) => callback(snapshot);
     ipcRenderer.on('conversion:tasks', listener);
     return () => ipcRenderer.removeListener('conversion:tasks', listener);
   }

@@ -5,12 +5,8 @@
   import store, {taskAction} from '$lib/store.svelte.js';
   let selected = $derived(store.tasks[store.selectedTask]);
   let tasks = $derived(Object.values(store.tasks));
-  let acting = $state(false);
-  async function act(action, ids) {
-    if (acting) return;
-    acting = true;
-    try { await taskAction(action, ids); } finally { acting = false; }
-  }
+  let acting = $derived(store.taskActionBusy);
+  const act = taskAction;
 </script>
 <div class="flex flex-wrap gap-1 p-2 border-b">
   <Button size="sm" variant="outline" disabled={acting || selected?.status !== 'ready'} onclick={() => act('start', [selected.id])}>{$_('left.tasks.start.tooltip')}</Button>

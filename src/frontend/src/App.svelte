@@ -21,7 +21,7 @@
       Object.assign(consts, data);
       store.tools = data.tools ?? [];
       store.outputDirectory = data.outputDirectory;
-      updateTasks(data.tasks);
+      updateTasks(data.taskSnapshot);
       const saved = await window.store.get('favorite') ?? {};
       store.favorite = Object.fromEntries(Object.entries(data.outputFormats).map(([type, formats]) =>
         [type, Object.fromEntries(formats.map(format => [format, saved[type]?.[format] === true]))]));
@@ -40,8 +40,8 @@
     <div class="flex flex-1 min-h-0">
       <aside class="w-2/5 max-w-lg border-r flex flex-col min-h-0">
         <div class="p-3 border-b flex flex-wrap gap-2">
-          <Button disabled={!store.selectedFormat || store.busy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
-          <Button variant="outline" disabled={!store.selectedFormat || store.busy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
+          <Button disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
+          <Button variant="outline" disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
           <p class="text-xs text-muted-foreground w-full">{$_('conversion.importHint')}</p>
         </div>
         <Tabs.Root bind:value={store.tab} class="flex-1 min-h-0">

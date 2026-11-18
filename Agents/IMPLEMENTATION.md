@@ -19,14 +19,15 @@ Read AGENTS.md, ARCHITECTURE.md and SCOPE.md, then inspect git status before edi
 
 Use Svelte 5 runes; `$lib` aliases src/lib. Compose generated ui/* components,
 never edit them. Main and preload.cjs changes must stay in sync. Renderer task
-state is a snapshot; all actions go through backend IDs. Subscribe to task changes
+state uses monotonic `{revision,tasks}` snapshots; never apply stale replies; all actions go through backend IDs. Subscribe to task changes
 before requesting init to avoid missing updates; unregister listeners on teardown.
 Output-directory changes affect new imports only. Keep en-us/zh-cn keys in sync.
 
 ## Running checks
 
 `bun install`; `cd src/frontend && bun install`; root `bun run test` and
-`bun run build`. Start built app with `bun run start`; dev uses two terminals:
+`bun run build`, plus `bun run check`. CI also requires `bun run check:tools`
+and zero skipped integration tests. Start built app with `bun run start`; dev uses two terminals:
 frontend `bun run dev` and root `bun run dev` (explicit --dev).
 
 Definition of done: relevant tests and build pass, manual/native coverage stated

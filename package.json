@@ -9,7 +9,9 @@
     "update": "bunx npm-check-updates -ui",
     "start": "electron .",
     "test": "node --test",
-    "build": "cd src/frontend && bun run build"
+    "build": "cd src/frontend && bun run build",
+    "check": "node scripts/check.mjs",
+    "check:tools": "node scripts/check-tools.mjs"
   },
   "devDependencies": {
     "electron": "^45.3.4"
@@ -22,5 +24,6 @@
   },
   "trustedDependencies": [
     "electron"
-  ]
+  ],
+  "packageManager": "bun@1.4.4"
 }

@@ -13,6 +13,9 @@
 - Sandboxed narrow IPC, production loadFile, favorite/offline persistence,
   navigator language default and locale choice.
 - Node tests including real tiny synthetic media fixtures, production build.
+- Linux GitHub Actions workflow with real media tools, locked installs, skip-free
+  integration enforcement, syntax/locale checks and build (no native GUI claim).
+- Revision-aware task updates and shared UI operation locks.
 
 ## Explicit limitations
 

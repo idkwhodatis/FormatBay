@@ -16,8 +16,8 @@ let shutdownComplete = false;
 let dialogOpen = false;
 let outputDirectory = null;
 let catalog;
-const service = new ConversionService({onChange: tasks => {
-  if (win && !win.isDestroyed()) win.webContents.send('conversion:tasks', tasks);
+const service = new ConversionService({onChange: (tasks, revision) => {
+  if (win && !win.isDestroyed()) win.webContents.send('conversion:tasks', {revision, tasks});
 }});
 
 function verify(event) { assertTrustedSender(event, win, allowedURL, quitting); }
@@ -39,7 +39,7 @@ app.whenReady().then(async () => {
   const settings = new Store();
   await migrateLegacySettings(settings, path.join(app.getAppPath(), 'config.json'), catalog.outputFormats);
   const settingKeys = new Set(['favorite', 'offlineMode']);
-  handle('app:initData', () => ({...catalog, tasks: service.list(), outputDirectory}));
+  handle('app:initData', () => ({...catalog, taskSnapshot: service.snapshot(), outputDirectory}));
   handle('store:get', key => {
     if (!settingKeys.has(key)) throw new Error('Unsupported setting');
     return settings.get(key);
@@ -50,7 +50,7 @@ app.whenReady().then(async () => {
     if (typeof folder !== 'boolean') throw new Error('Invalid folder flag');
     return withDialog(async () => {
       const result = await dialog.showOpenDialog(win, {properties: folder ? ['openDirectory'] : ['openFile', 'multiSelections']});
-      if (result.canceled || quitting) return service.list();
+      if (result.canceled || quitting) return service.snapshot();
       let paths = result.filePaths;
       if (folder) {
         const entries = await readdir(paths[0], {withFileTypes: true});
@@ -58,7 +58,8 @@ app.whenReady().then(async () => {
       }
       if (!paths.length) throw new Error('The selected folder contains no regular files. Folder import does not include subfolders.');
       if (paths.length > 200) throw new Error('Select at most 200 files. Folder import is non-recursive.');
-      return service.addFiles(paths, validatedTarget);
+      await service.addFiles(paths, validatedTarget);
+      return service.snapshot();
     });
   });
   handle('conversion:outputDirectory', () => withDialog(async () => {
@@ -78,7 +79,7 @@ app.whenReady().then(async () => {
   handle('conversion:action', (action, id) => {
     if (!['start', 'cancel', 'remove'].includes(action)) throw new Error('Unsupported action');
     service[action](taskID(id));
-    return service.list();
+    return service.snapshot();
   });
   ipcMain.on('app:close', event => { try { verify(event); app.quit(); } catch {} });
   ipcMain.on('app:minimize', event => { try { verify(event); win.minimize(); } catch {} });
