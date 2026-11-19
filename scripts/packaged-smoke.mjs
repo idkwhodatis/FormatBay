@@ -10,6 +10,7 @@ import {mkdtemp, mkdir, cp, rm, stat, readFile, access} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {pollValue} from './smoke-poll.mjs';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const normalize = value => path.resolve(value).toLowerCase();
@@ -137,13 +138,11 @@ async function scenario(electron, executablePath, temporary, toolPath, missingTo
       assert.equal(dismissed.toolManagement.tools.find(tool=>tool.id==='opusenc').bytes,0);
       await page.getByTestId('tool-install-opusenc').click();
       await page.getByTestId('tool-confirm-install-opusenc').click();
-      await page.waitForFunction(async()=>{
-        const data=await window.electronAPI.getInitData();
+      const installed=await pollValue(()=>page.evaluate(()=>window.electronAPI.getInitData()),data=>{
         const tool=data.toolManagement.tools.find(tool=>tool.id==='opusenc');
         if(tool.status==='failed'||tool.status==='cancelled')throw new Error(`Real opusenc installation failed: ${tool.error}`);
         return tool.source==='managed' && data.targetEncoders.opus?.includes('opusenc');
-      },null,{timeout:120000});
-      const installed=await page.evaluate(()=>window.electronAPI.getInitData());
+      },{timeout:120000,label:'Real managed opusenc installation'});
       assert.equal(installed.toolManagement.tools.find(tool=>tool.id==='ffmpeg').source,'bundled');
       assert.equal(installed.toolManagement.tools.find(tool=>tool.id==='opusenc').installedVersion,optional.version);
       await access(path.join(profile,'tools','opusenc',optional.version,'install.json'));
@@ -196,11 +195,9 @@ async function scenario(electron, executablePath, temporary, toolPath, missingTo
         const outputBytes=await readFile(task.outputPath);
         await page.getByTestId('tool-manager-toggle').click();
         await page.getByTestId('tool-remove-opusenc').click();
-        await page.waitForFunction(async()=>{
-          const data=await window.electronAPI.getInitData();
+        const removed=await pollValue(()=>page.evaluate(()=>window.electronAPI.getInitData()),data=>{
           return data.toolManagement.tools.find(tool=>tool.id==='opusenc').source==='missing' && !data.targetEncoders.opus?.includes('opusenc');
-        },null,{timeout:30000});
-        const removed=await page.evaluate(()=>window.electronAPI.getInitData());
+        },{timeout:30000,label:'Managed opusenc removal'});
         assert.equal(removed.toolManagement.tools.find(tool=>tool.id==='ffmpeg').source,'bundled');
         assert.equal(removed.toolManagement.tools.find(tool=>tool.id==='ffmpeg').canRemove,false);
         assert.equal(removed.taskSnapshot.tasks[0].status,'done');
