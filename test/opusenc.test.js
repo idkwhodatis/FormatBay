@@ -55,6 +55,24 @@ test('real FFmpeg → opusenc route, automatic direct route and verified output 
  }finally{await service.shutdown();await rm(dir,{recursive:true,force:true});}
 });
 
+test('same-format Opus uses direct FFmpeg copy and rejects a forced opusenc round-trip',async t=>{
+ const ffmpeg=new FFmpegAdapter(),opusenc=new OpusencAdapter();
+ if(!(await ffmpeg.discover()).available||!(await opusenc.discover()).available)return t.skip('FFmpeg and opusenc required');
+ const dir=await mkdtemp(path.join(os.tmpdir(),'formatbay-same-opus-'));
+ const service=new ConversionService({adapters:[ffmpeg,opusenc]});
+ try {
+  await service.initialize();
+  const source=path.join(dir,'source.opus');
+  await runProcess('ffmpeg',['-v','error','-f','lavfi','-i','anullsrc=r=48000:cl=3.0','-t','0.35','-c:a','libopus','-mapping_family','1',source]);
+  await service.addFiles([source],{kind:'audio',format:'opus'});
+  await service.addFiles([source],{kind:'audio',format:'opus',encoder:'opusenc'});
+  const [direct,forced]=service.list();
+  assert.deepEqual(direct.plan.steps.map(step=>step.capabilityId),['ffmpeg:copy:opus']);
+  assert.equal(forced.status,'blocked');
+  assert.match(forced.error,/one compatible tool in one step/);
+ } finally {await service.shutdown();await rm(dir,{recursive:true,force:true});}
+});
+
 test('real fallback chains tools when FFmpeg Opus encoding is unavailable',async t=>{
  class NoOpusEncoder extends FFmpegAdapter {
   formats(){return super.formats().filter(format=>format!=='opus');}

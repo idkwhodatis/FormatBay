@@ -76,6 +76,8 @@ may contain cycles; an individual executable plan must be bounded and acyclic.
 - Prefer preservation over fewer steps: remux/copy when equivalent, lossless
   intermediate formats when chaining, then fewer steps. Lossless output does not
   restore quality already lost. Reject a silent video for an audio target.
+- Same-format requests require one compatible tool operation. Never leave the
+  format and re-enter it to satisfy a same-format edit or encoder choice.
 - Probe actual streams and verify each produced intermediate and final file.
   Filter unavailable tools and network operations under offline policy before
   planning. Planning is deterministic and bounded, with no graph database or LLM.

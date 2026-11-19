@@ -16,6 +16,7 @@ files per dialog/500 tasks, folders are non-recursive.
 - `conversion/planner.js`: pure bounded graph search. State includes kind, format,
   audio codec and stream presence. Capability predicates define valid edges;
   availability/offline policy filters them. Quality cost precedes step count.
+  Same-kind, same-format requests only consider direct one-step capabilities.
   Route steps snapshot capability ID, tool/version, input/output and warnings.
 - `conversion/ffmpeg.js`: discovers FFmpeg/ffprobe and actual encoders, decoders,
   muxers. Supported output targets are WAV/FLAC/MP3/AAC/OGG/Opus when available.

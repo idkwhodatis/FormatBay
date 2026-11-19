@@ -28,6 +28,8 @@ export function planConversion(input, target, capabilities, {offline = true, max
   if (target.kind === 'audio' && !input.hasAudio) {
     return {ok:false, reason:'no-audio', message:'The input has no audio stream.'};
   }
+  // Editing an artifact in its own format must not round-trip via another format.
+  const directOnly = matchesTarget(input,target);
   const queue = [{state:input,steps:[],warnings:[],loss:0,visited:new Set([stateKey(input)])}];
   const best = new Map();
   let explored = 0;
@@ -38,12 +40,13 @@ export function planConversion(input, target, capabilities, {offline = true, max
     if (current.steps.length && reachesTarget(current.state) && (!requiredFinalTool || current.steps.at(-1).toolId===requiredFinalTool)) {
       return {ok:true,input,target,steps:current.steps,warnings:[...new Set(current.warnings)],loss:current.loss};
     }
-    if (current.steps.length >= maxSteps) continue;
+    if (current.steps.length >= (directOnly ? 1 : maxSteps)) continue;
     for (const edge of capabilities) {
       if (edge.available === false || (offline && edge.network) || !edge.accepts(current.state)) continue;
       const output = edge.output(current.state);
       const key = stateKey(output);
       const isGoal = reachesTarget(output);
+      if (directOnly && (!isGoal || (requiredFinalTool && edge.toolId!==requiredFinalTool))) continue;
       if (current.visited.has(key) && !isGoal) continue;
       const loss = current.loss + edge.loss;
       const depth = current.steps.length+1;
@@ -56,6 +59,9 @@ export function planConversion(input, target, capabilities, {offline = true, max
         steps:[...current.steps,{capabilityId:edge.id,toolId:edge.toolId,toolVersion:edge.toolVersion??null,verifyInput:edge.verifyInput===true,label:edge.label,input:current.state,output}],
         warnings:[...current.warnings,...warnings],visited:new Set([...current.visited,key])});
     }
+  }
+  if (directOnly && !queue.length) {
+    return {ok:false,reason:'same-format-direct-only',message:'This format can only be edited with one compatible tool in one step. No such route is available for this input and tool selection.'};
   }
   return {ok:false,reason:explored > maxStates ? 'search-limit' : 'unreachable',
     message:requiredAudioLayout===null?'No compatible local conversion route is available. Check the installed tools and input codecs.':`No compatible local conversion route preserves the input speaker layout (${requiredAudioLayout || 'unknown'}). Check the installed tools and input codecs/layout.`};

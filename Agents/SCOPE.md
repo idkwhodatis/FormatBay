@@ -29,6 +29,8 @@
   unavailable. FFmpeg remains required for probing/output verification.
 - Audio-only outputs, first audio stream. Video/subtitles/chapters/metadata/artwork
   are discarded and disclosed; lossy or precision changes have warnings.
+- Same-format output never detours through an intermediate format. Subtitle and
+  default-track editing are not yet exposed as operations.
 - Tool discovery is at startup; install FFmpeg/ffprobe and optional opus-tools
   manually and restart. No automated downloads.
 - No downloads/network conversions; the offline toggle is retained but all

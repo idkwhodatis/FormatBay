@@ -30,3 +30,11 @@ test('bounded paths, deterministic tie order, invalid registry',()=>{
 test('same-format source still yields an explicit output plan',()=>{
  assert.equal(planConversion(audio('l'),target,[edge('copy','l','l')]).steps.length,1);
 });
+test('same-format output must use one compatible operation, even if a detour costs less',()=>{
+ const edges=[edge('direct:edit','l','l',2),edge('first:stage','l','f'),edge('other:encode','f','l')];
+ assert.deepEqual(planConversion(audio('l'),target,edges).steps.map(s=>s.capabilityId),['direct:edit']);
+ const blocked=planConversion(audio('l'),target,edges,{requiredFinalTool:'other'});
+ assert.equal(blocked.ok,false);
+ assert.equal(blocked.reason,'same-format-direct-only');
+ assert.match(blocked.message,/one compatible tool in one step/);
+});

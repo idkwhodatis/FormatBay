@@ -20,7 +20,10 @@ FFmpeg and optional [Xiph opusenc](https://opus-codec.org/docs/opus-tools/opusen
 are production adapters. With opus-tools installed on PATH, choose Opus and the
 advanced opusenc encoder to route video → FFmpeg FLAC/WAV → opusenc Opus. Automatic
 mode prefers a direct route when equivalent, or chains tools when FFmpeg lacks
-Opus encoding. Each stage is verified before the next runs. Completed tasks offer **Show in
+Opus encoding on a cross-format conversion. Same-format requests require one
+compatible tool operation and never round-trip through an intermediate;
+subtitle and default-track editing are not implemented yet.
+Each stage is verified before the next runs. Completed tasks offer **Show in
 folder**; moved or deleted outputs report an error rather than silently failing.
 
 Video output, OCR, structured data and a topology visualization are not yet implemented.
