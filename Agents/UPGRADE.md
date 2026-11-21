@@ -282,3 +282,66 @@ Added `yauzl@3.4.0` as an exact production pin (official npm latest verified) fo
 lazy bounded ZIP reads. Full archive SHA256 verification precedes extraction;
 only reviewed entries are written, and symlinks/path traversal/duplicates are
 rejected. No archive executable/script is run by the extractor.
+
+## Local dependency candidate (2026-11-21)
+
+Base: verified default `master` at `27774fbdcf34c0887ea03a703af10857e51bea04`.
+Isolated local branch: `local/dependency-upgrade-20261121`. No commit, push or CI
+run was performed for this candidate.
+
+| Component | Before | Candidate |
+| --- | --- | --- |
+| Electron | 45.3.4 | 45.4.1 |
+| Bun package manager / both CI pins | 1.4.4 | 1.4.5 |
+| @lucide/svelte | 1.74.0 | 1.77.0 |
+| Svelte | 5.57.3 | 5.59.1 |
+| tailwind-merge | 3.7.0 | 3.7.1 |
+
+Both Bun lockfiles were regenerated with Bun 1.4.5 and frozen installs verified.
+Other declared root packages remain current stable: @electron/packager20.3.0,
+playwright-core1.65.1, electron-store12.0.0 and yauzl3.4.0. The other twelve
+frontend dependencies also matched their current official npm latest tags.
+
+Primary release checks:
+- https://releases.electronjs.org/release/v45.4.1 identifies latest stable and
+  upstream Chromium/ANGLE/Dawn/FFmpeg/PDFium/V8 fixes. Its embedded Node remains
+  24.22.3, confirmed by launching the downloaded official Linux Electron binary.
+- https://bun.com/blog/bun-v1.4.5 identifies this as a security update affecting
+  HTTP/TLS/DNS and other bundled components.
+- Exact package versions/peer requirements were checked against the official npm
+  registry; no beta/canary versions were selected.
+
+### Deliberate native/toolchain holds
+
+This candidate does not alter the verified Windows native-media build:
+- FFmpeg9.0.2 remains pinned, while https://ffmpeg.org/download.html now lists
+  FFmpeg9.1 (released2026-11-20). A subsequent native candidate must update source
+  hashes/signature verification, download manifests, build recipe and package
+  verifier together, then pass Windows source-built six-codec tests and actual
+  packaged conversion/install acceptance before publication.
+- LAME3.100 remains pinned, while https://lame.sourceforge.io/ lists LAME4.0.
+  That major upgrade requires compilation/API and real MP3 regression validation
+  alongside FFmpeg; it is not silently labeled current.
+- https://xiph.org/downloads/ still lists libogg1.3.6 and libvorbis1.3.7;
+  https://opus-codec.org/downloads/ still lists stable libopus1.6.1. These pins
+  are already current. Optional Windows opusenc stays at the explicitly reviewed
+  upstream-linked opus-tools0.2/Opus1.3 binary; that page still exposes this build.
+- Node24.22.3 is intentionally retained: it matches Electron45.4.1's embedded
+  Node and remains the latest patched24.x maintenance LTS. Node26.13.1 is newer
+  active LTS, but changing the independent build-runtime major is not required by
+  these dependency updates and would need its own cross-platform matrix.
+
+There are no Cargo manifests, Cargo lockfiles or Rust toolchain pins in this
+verified default checkout. Rust tests are therefore not applicable, not passed.
+
+### Actual local verification
+
+- Node24.22.3 full suite:86/86 passed, zero skips, including real system FFmpeg7.1.5
+  and opusenc0.2/libopus1.5.2 conversions and same-format graph regression tests.
+- Official Electron45.4.1 Linux binary in `ELECTRON_RUN_AS_NODE=1` mode: the same
+  86/86 full suite passed, zero skips. This validates its Node runtime, NOT its GUI.
+- Syntax/locale checks, frontend production build, frozen installs and diff checks
+  passed. Frontend-focused snapshot tests also passed.
+- Windows native Electron/UI, source-built FFmpeg, relocated packaged application
+  and installer acceptance have NOT been rerun for this local-only candidate.
+  Existing Windows workflow remains configured to run them after authorized push.
