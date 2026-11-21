@@ -6,6 +6,8 @@ import path from 'node:path';
 import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {sha256File} from '../src/backend/conversion/tool-download.js';
+import {TOOL_MANIFESTS} from '../src/backend/conversion/tool-manifests.js';
+import {BUNDLED_FFMPEG_REQUIRED_CONFIG,verifyBundledFFmpegCapabilities} from '../src/backend/conversion/bundled-ffmpeg-contract.js';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const fixed=new Set(['src/main.js','src/preload.cjs','src/ipc-policy.js','src/settings-migration.js']);
@@ -78,13 +80,31 @@ export async function verifyFFmpegBundle(bundle) {
   const configuration=await readFile(path.join(bundle,'source/build-logs/config.h'),'utf8');
   const components=await readFile(path.join(bundle,'source/build-logs/config.mak'),'utf8');
   for(const feature of ['GPL','NONFREE','VERSION3','NETWORK'])if(!new RegExp(`^#define CONFIG_${feature} 0$`,'m').test(configuration))throw new Error(`Unsafe bundled FFmpeg configuration: ${feature}`);
-  for(const codec of ['PCM_S16LE','FLAC','AAC','LIBMP3LAME','LIBVORBIS','LIBOPUS'])if(!new RegExp(`^CONFIG_${codec}_ENCODER=yes$`,'m').test(components))throw new Error(`Bundled encoder missing: ${codec}`);
-  for(const component of ['ffmpeg-9.0.2','libogg-1.3.6','libvorbis-1.3.7','lame-3.100','opus-1.6.1','toolchain']){
+  const enabledComponents=new Set(components.split(/\r?\n/).filter(row=>row.endsWith('=yes')).map(row=>row.slice(0,-4)));
+  for(const component of BUNDLED_FFMPEG_REQUIRED_CONFIG)if(!enabledComponents.has(component))throw new Error(`Bundled FFmpeg release capability missing: ${component}`);
+  for(const component of ['ffmpeg-9.0.2','libogg-1.3.6','libvorbis-1.3.7','lame-3.100','opus-1.6.1','zlib-1.4','toolchain']){
     const directory=path.join(bundle,'licenses',component);
     if(!(await readdir(directory,{recursive:true,withFileTypes:true})).some(entry=>entry.isFile()))throw new Error(`Bundled license notices missing: ${component}`);
   }
-  return {id:'ffmpeg',version:'9.0.2-formatbay-lgpl',files};
+  await verifyBundledFFmpegCapabilities(path.resolve(bundle,'bin','ffmpeg.exe'),path.resolve(bundle,'bin','ffprobe.exe'));
+  return {id:'ffmpeg',version:TOOL_MANIFESTS.ffmpeg.version,files};
 }
+async function stageFFmpegPair(bundle,directory,bundledInfo) {
+  await mkdir(path.dirname(directory),{recursive:true});
+  await mkdir(directory);
+  for(const [name,hash] of Object.entries(bundledInfo.files)){
+    const file=path.join(directory,name);await cp(path.join(bundle,'bin',name),file);
+    if(await sha256File(file)!==hash)throw new Error(`Bundled FFmpeg changed during staging: ${name}`);
+  }
+  await writeFile(path.join(directory,'install.json'),JSON.stringify(bundledInfo,null,2)+'\n',{flag:'wx'});
+}
+export async function prepareWindowsDevFFmpeg(bundle,toolsRoot=path.join(root,'.cache','bundled-tools')) {
+  if(process.platform!=='win32')throw new Error('The pinned release bundle is Windows x64; run this command on Windows');
+  const info=await verifyFFmpegBundle(bundle);
+  const directory=path.join(toolsRoot,'ffmpeg');await stageFFmpegPair(bundle,directory,info);
+  console.log(`Prepared bundled FFmpeg / ffprobe in ${directory}`);
+}
+
 export async function buildWindows() {
   if(process.platform!=='win32')throw new Error('Build this Windows preview on Windows (CI uses windows-2025)');
   const manifest=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));
@@ -121,10 +141,11 @@ export async function buildWindows() {
     await access(path.join(application,'FormatBay.exe'));
     await access(path.join(application,'resources/app.asar'));
     const toolRoot=path.join(application,'resources/tools/ffmpeg');
-    await cp(bundle,toolRoot,{recursive:true});
-    for(const name of Object.keys(bundledInfo.files))await cp(path.join(bundle,'bin',name),path.join(toolRoot,name));
-    await rm(path.join(toolRoot,'bin'),{recursive:true});
-    await writeFile(path.join(toolRoot,'install.json'),JSON.stringify(bundledInfo,null,2)+'\n');
+    await stageFFmpegPair(bundle,toolRoot,bundledInfo);
+    for(const name of ['source','licenses'])await cp(path.join(bundle,name),path.join(toolRoot,name),{recursive:true});
+    const toolReadme=await readFile(path.join(bundle,'README.txt'),'utf8');
+    await writeFile(path.join(toolRoot,'README.txt'),toolReadme.replace('Keep bin/, source/, licenses/ and SHA256SUMS','Keep both executables, source/, licenses/ and SHA256SUMS'));
+    await writeFile(path.join(toolRoot,'SHA256SUMS'),Object.entries(bundledInfo.files).map(([name,hash])=>`${hash}  ${name}\n`).join(''));
     await cp(path.join(root,'LICENSE'),path.join(application,'FORMATBAY-LICENSE.txt'));
     await writeFile(path.join(application,'THIRD-PARTY-NOTICES.txt'),notices);
     const sources=path.join(application,'source');await mkdir(sources,{recursive:true});
@@ -133,11 +154,12 @@ export async function buildWindows() {
     }
     await writeFile(path.join(sources,'.formatbay-source-files.json'),JSON.stringify(inventory,null,2)+'\n');
     await writeFile(path.join(application,'BUILD-INFO.json'),JSON.stringify({version:manifest.version,electronVersion,revision:inventory.revision,dirty:inventory.dirty,platform:'win32',arch:'x64',signed:false,bundledMediaTools:[bundledInfo]},null,2)+'\n');
-    await writeFile(path.join(application,'READ-ME-FIRST.txt'),`FormatBay ${manifest.version} — unsigned portable preview\n\nExtract the whole folder before running FormatBay.exe. This is not an installer\nand is not signed. It does not modify PATH or bypass Windows security.\n\nFFmpeg and ffprobe are bundled, built from the enclosed pinned LGPL/BSD source\narchives. Keep resources/tools/ffmpeg/source and licenses with the executables.\nOptional opusenc can be installed explicitly from Tools after reviewing the\nsource/license/network disclosure. Downloads are pinned and SHA256 verified,\ninstalled only in app userData, and never triggered merely by selecting a format.\nManaged installation is Windows x64 only. System PATH tools remain supported.\n\nProject source matching this build is in source/, including Bun locks/build\ninstructions. FORMATBAY-LICENSE.txt preserves the project license; Electron's\nLICENSE/LICENSES.chromium.html and THIRD-PARTY-NOTICES.txt preserve notices.\nNative picker/Explorer interaction and signing are not acceptance claims.\n`);
+    await writeFile(path.join(application,'READ-ME-FIRST.txt'),`FormatBay ${manifest.version} — unsigned portable preview\n\nExtract the whole folder before running FormatBay.exe. This is not an installer\nand is not signed. It does not modify PATH or bypass Windows security.\n\nFFmpeg and ffprobe are bundled, built from the enclosed pinned LGPL/BSD source\narchives. Keep resources/tools/ffmpeg/source and licenses with the executables.\nOptional opusenc can be installed explicitly from Tools after reviewing the\nsource/license/network disclosure. Downloads are pinned and SHA256 verified,\ninstalled only in app userData, and never triggered merely by selecting a format.\nManaged installation is Windows x64 only. Only optional tools can use system PATH.\n\nProject source matching this build is in source/, including Bun locks/build\ninstructions. FORMATBAY-LICENSE.txt preserves the project license; Electron's\nLICENSE/LICENSES.chromium.html and THIRD-PARTY-NOTICES.txt preserve notices.\nNative picker/Explorer interaction and signing are not acceptance claims.\n`);
     console.log(`Unsigned portable Windows preview: ${application}`);
     return application;
   } finally {await rm(workspace,{recursive:true,force:true,maxRetries:10,retryDelay:200});}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
-  await buildWindows().catch(error=>{console.error(error.stack??error);process.exitCode=1;});
+  const operation=process.argv[2]==='--prepare-dev-tools' ? prepareWindowsDevFFmpeg(process.env.FORMATBAY_FFMPEG_BUNDLE) : buildWindows();
+  await operation.catch(error=>{console.error(error.stack??error);process.exitCode=1;});
 }

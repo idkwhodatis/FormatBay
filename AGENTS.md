@@ -15,15 +15,16 @@ multi-tool graph planning and real FFmpeg → opusenc execution are tested.
 - Tests: `bun run test` (Node test runner). FFmpeg integration tests skip explicitly
   if system FFmpeg/ffprobe is unavailable; tests must not auto-download binaries.
 - Windows x64 packages bundle our source-complete FFmpeg/ffprobe build. Source
-  apps may use safe PATH tools or explicit managed installs; opusenc is optional.
+  apps use a prepared release bundle, not PATH FFmpeg; opusenc is optional.
 
 ## Contributor map and rules
 
 Read `Agents/ARCHITECTURE.md`, `Agents/SCOPE.md`, `Agents/IMPLEMENTATION.md` before
 changes; keep them synchronized. Check status and don't overwrite unrelated work.
 
-1. Runtime formats come from adapter discovery, not `supported.txt`, README
-   wishes or the historical `src/backend/consts/initData.json` catalog.
+1. Production FFmpeg formats and Config fields come from the pinned release
+   contract checked during packaging, not PATH or historical catalogs. Keep the
+   contract, package checks and exercised formats synchronized.
 2. Never commit `config.json`; settings use electron-store's user-data directory.
 3. Keep en-us / zh-cn locale keys synchronized. Svelte 5 runes only.
 4. Do not hand-edit generated `src/frontend/src/lib/components/ui/*` components.
@@ -147,7 +148,7 @@ Windows acceptance requirements and unverified native coverage are tracked in
 - `packaged-smoke.mjs` must launch the relocated actual exe/app.asar with an
   isolated profile, no checkout module fallback, and both absent/present tools.
 - Windows packages bundle our own source-complete FFmpeg build; optional opusenc
-  installs only after explicit confirmation. Safe PATH tools remain supported.
+  installs only after explicit confirmation. Safe PATH discovery is optional-tools only.
   Resolve explicit absolute executables once; ignore implicit cwd, relative
   entries, Windows scripts and UNC paths. Never silently install/download tools.
 - No native-picker, Explorer, signing or installer claims from boundary stubs.
@@ -157,7 +158,7 @@ Windows acceptance requirements and unverified native coverage are tracked in
 - `tools:install/remove/cancel` accept only a backend-known tool ID;
   `tools:refresh` has no payload. Replies are full app init data. `tools:state`
   pushes revisioned progress. Renderer never supplies a URL/hash/path/command.
-- `outputFormats` remains actual discovered capability; `installableFormats` is
+- `outputFormats` remains the verified release contract; `installableFormats` is
   potential UI discovery only and cannot authorize import or execution.
 - Block mutations while file dialogs or ready/queued/running tasks exist.
   Never replace executable paths underneath a prepared plan.
@@ -166,5 +167,6 @@ Windows acceptance requirements and unverified native coverage are tracked in
 - Bundle our source-built LGPL/BSD FFmpeg with all matching archives/recipes/
   notices. Do not bundle Gyan binaries with only FFmpeg's own source attached.
 - Managed installation Windows x64 only; unsupported platforms show manual PATH
-  guidance. No automatic updates, unpinned latest downloads, admin/PATH changes,
+  guidance for optional tools. FFmpeg is never installable/removable in Tools.
+  No automatic updates, unpinned latest downloads, admin/PATH changes,
   hidden installers or source/bundle/system deletions.

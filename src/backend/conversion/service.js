@@ -3,15 +3,17 @@ import {mkdtemp,rm,stat,link,realpath} from 'node:fs/promises';
 import path from 'node:path';
 import {FFmpegAdapter} from './ffmpeg.js';
 import {OpusencAdapter} from './opusenc.js';
+import {FFmpegMediaAdapter} from './ffmpeg-media.js';
 import {planConversion,matchesTarget} from './planner.js';
+import {validateTarget} from '../../ipc-policy.js';
 
 const statuses=new Set(['ready','running','queued']);
 /** Backend-owned tasks. The renderer can never supply an executable plan. */
 export class ConversionService {
-  constructor({onChange=()=>{},adapter,adapters,cleanup=directory=>rm(directory,{recursive:true,force:true})}={}) {
+  constructor({onChange=()=>{},adapter,adapters,media,cleanup=directory=>rm(directory,{recursive:true,force:true})}={}) {
     adapters ??= adapter?[adapter]:[new FFmpegAdapter(),new OpusencAdapter()];
     this.cleanup=cleanup;
-    this.adapter=adapters[0];this.adapters=adapters;this.toolAdapters=new Map();this.formats=[];this.onChange=onChange;this.tasks=new Map();this.internal=new Map();
+    this.adapter=adapters[0];this.adapters=adapters;this.media=media;this.toolAdapters=new Map();this.formats=[];this.onChange=onChange;this.tasks=new Map();this.internal=new Map();
     this.revision=0;this.outputDirectory=null;this.active=null;this.queue=[];this.closing=false;
     this.addChain=Promise.resolve();this.importController=new AbortController();
   }
@@ -33,7 +35,34 @@ export class ConversionService {
     this.capabilities=enabled.flatMap(adapter=>adapter.capabilities());
     this.formats=[...new Set(enabled.flatMap(adapter=>adapter.formats()))];
     this.targetEncoders=this.capabilities.some(edge=>edge.toolId==='opusenc')?{opus:['opusenc']}:{};
-    return {outputFormats:{Audio:this.formats},tools,targetEncoders:this.targetEncoders};
+    this.outputFormats={Audio:this.formats};
+    this.targetOptions={audio:Object.fromEntries(this.formats.flatMap(format=>{
+      const options=primaryAvailable&&this.adapter.audioOptions?.(format);
+      return options?[[format,options]]:[];
+    }))};
+    if (primaryAvailable && (this.media || this.adapter instanceof FFmpegAdapter)) {
+      this.media ??= new FFmpegMediaAdapter(this.adapter);
+      await this.media.discover();
+      for (const [kind,formats] of Object.entries(this.media.formats())) {
+        if(formats.length)this.outputFormats[kind[0].toUpperCase()+kind.slice(1)]=formats;
+      }
+      Object.assign(this.targetOptions,this.media.config());
+    }
+    return {outputFormats:this.outputFormats,tools,targetEncoders:this.targetEncoders,targetOptions:this.targetOptions};
+  }
+  probe(file,target,opts) {
+    return (target.kind==='audio'?this.adapter:this.media).probe(file,opts);
+  }
+  plan(input,target) {
+    if(target.kind!=='audio')return this.media.plan(input,target);
+    const configured=!!target.options;
+    const capabilities=configured
+      ? [...this.adapter.capabilities(target), ...this.capabilities.filter(edge=>edge.toolId!=='ffmpeg')]
+      : this.capabilities;
+    return planConversion(input,target,capabilities,{offline:true,
+      requiredFinalTool:configured?'ffmpeg':target.encoder??null,
+      requiredAudioLayout:target.options?.channels || target.format==='mp3'?null:(input.audioLayout??null),
+    });
   }
   list() {return structuredClone([...this.tasks.values()]);}
   snapshot() {return {revision:this.revision,tasks:this.list()};}
@@ -47,8 +76,7 @@ export class ConversionService {
   async addFiles(paths,target) {
     if (this.closing) throw new Error('Application is closing');
     if (!Array.isArray(paths)||!paths.length||paths.length>200||paths.some(file=>typeof file!=='string'||!path.isAbsolute(file))) throw new Error('Select 1–200 local files');
-    if (!target || target.kind!=='audio' || !this.formats.includes(target.format)) throw new Error('Unsupported output format or unavailable tool');
-    if (target.encoder!==undefined && !this.targetEncoders[target.format]?.includes(target.encoder)) throw new Error('Selected encoder is unavailable for this format');
+    target=validateTarget(target,this.outputFormats,this.targetEncoders);
     // Serialize imports to keep the task limit deterministic under repeated clicks.
     const operation=this.addChain.then(async()=>{
       if (this.closing) throw new Error('Application is closing');
@@ -56,12 +84,12 @@ export class ConversionService {
       for (const inputPath of paths) {
         if (this.closing) break;
         const id=randomUUID();
-        const task={id,inputPath,target:{kind:target.kind,format:target.format,...(target.encoder?{encoder:target.encoder}:{})},status:'blocked',plan:null,error:null,progress:0,outputPath:null};
+        const task={id,inputPath,target:structuredClone(target),status:'blocked',plan:null,error:null,progress:0,outputPath:null};
         try {
           const canonical=await realpath(inputPath);
-          const probe=await this.adapter.probe(canonical,{signal:this.importController.signal});
+          const probe=await this.probe(canonical,task.target,{signal:this.importController.signal});
           const identity=await stat(canonical);
-          const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null,requiredAudioLayout:task.target.format==='mp3'?null:(probe.state.audioLayout??null)});
+          const plan=this.plan(probe.state,task.target);
           if (!plan.ok) throw new Error(plan.message);
           task.plan=plan;task.status='ready';
           this.internal.set(id,{inputPath:canonical,probe,identity:{size:identity.size,mtimeMs:identity.mtimeMs},outputDirectory:this.outputDirectory});
@@ -104,8 +132,8 @@ export class ConversionService {
       // Reprobe at execution time; files may have changed while the task waited.
       const identity=await stat(internal.inputPath);
       if (identity.size!==internal.identity.size || identity.mtimeMs!==internal.identity.mtimeMs) throw new Error('The input changed since planning. Remove and add the file again.');
-      const probe=await this.adapter.probe(internal.inputPath,{signal});
-      const plan=planConversion(probe.state,task.target,this.capabilities,{offline:true,requiredFinalTool:task.target.encoder??null,requiredAudioLayout:task.target.format==='mp3'?null:(probe.state.audioLayout??null)});
+      const probe=await this.probe(internal.inputPath,task.target,{signal});
+      const plan=this.plan(probe.state,task.target);
       if (!plan.ok) throw new Error(plan.message);
       if (JSON.stringify(plan)!==JSON.stringify(task.plan)) throw new Error('The input changed since planning. Remove and add the file again to review its new route.');
       const directory=internal.outputDirectory ?? path.dirname(internal.inputPath);
@@ -115,12 +143,13 @@ export class ConversionService {
         if (signal.aborted) throw new Error('Cancelled');
         task.phase='converting';task.stepIndex=index;this.emit();
         const output=path.join(temp,`step-${index}.${step.output.format}`);
-        const executor=this.toolAdapters.get(step.toolId);
+        const media=task.target.kind!=='audio';
+        const executor=media?this.media:this.toolAdapters.get(step.toolId);
         if (!executor) throw new Error('Planned tool is no longer available');
         // External encoders and stream-copy demuxers may recover/drop damaged
         // packets silently. Validate the original stream before those paths;
         // every intermediate was already strictly verified.
-        if (index===0 && (executor!==this.adapter || step.verifyInput)) {
+        if (!media && index===0 && (executor!==this.adapter || step.verifyInput)) {
           task.phase='verifying';this.emit();
           await this.adapter.verify?.(current,{signal,expectedDuration:probe.audioDuration||0});
           task.phase='converting';this.emit();
@@ -129,9 +158,12 @@ export class ConversionService {
           task.progress=Math.min(99,Math.round(100*(index+value)/plan.steps.length));this.emit();
         }});
         task.phase='verifying';this.emit();
-        const verified=await this.adapter.probe(output,{signal});
-        if (!verified.size || !matchesTarget(verified.state,step.output) || verified.state.audioCodec!==step.output.audioCodec || !verified.state.hasAudio || verified.state.hasVideo || (step.output.audioChannels && verified.state.audioChannels!==step.output.audioChannels) || (step.output.audioLayout!==undefined && verified.state.audioLayout!==step.output.audioLayout)) throw new Error('Tool output did not match the planned media format');
-        await this.adapter.verify?.(output,{signal,expectedDuration:probe.audioDuration||verified.audioDuration||0});
+        if (media) await this.media.verify(output,step,{signal,expectedDuration:probe.duration});
+        else {
+          const verified=await this.adapter.probe(output,{signal});
+          if (!verified.size || !matchesTarget(verified.state,step.output) || verified.state.audioCodec!==step.output.audioCodec || !verified.state.hasAudio || verified.state.hasVideo || (step.output.audioChannels && verified.state.audioChannels!==step.output.audioChannels) || (step.output.audioLayout!==undefined && verified.state.audioLayout!==step.output.audioLayout) || (step.output.audioSampleRate!==undefined && verified.state.audioSampleRate!==step.output.audioSampleRate)) throw new Error('Tool output did not match the planned media format');
+          await this.adapter.verify?.(output,{signal,expectedDuration:probe.audioDuration||verified.audioDuration||0});
+        }
         current=output;
       }
       if (signal.aborted) throw new Error('Cancelled');

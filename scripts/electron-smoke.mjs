@@ -9,6 +9,7 @@ import {createRequire} from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {prepareWindowsDevFFmpeg} from './package-windows.mjs';
 
 const filename = fileURLToPath(import.meta.url);
 const root = path.resolve(path.dirname(filename), '..');
@@ -32,6 +33,10 @@ async function launch() {
     await mkdir(path.join(temporary, 'userData'));
     await mkdir(path.join(temporary, 'session'));
     const env = {...process.env, FORMATBAY_SMOKE_ROOT: temporary};
+    if (process.env.FORMATBAY_FFMPEG_BUNDLE) {
+      env.FORMATBAY_DEV_BUNDLED_TOOLS = path.join(temporary, 'tools');
+      await prepareWindowsDevFFmpeg(process.env.FORMATBAY_FFMPEG_BUNDLE, env.FORMATBAY_DEV_BUNDLED_TOOLS);
+    }
     delete env.ELECTRON_RUN_AS_NODE;
     const child = spawn(electron, [filename], {
       cwd: root, env, shell: false, stdio: ['ignore', 'pipe', 'pipe'],
@@ -125,29 +130,24 @@ async function exerciseWorkflows({window, dialogState, reveals, temporary, error
   await select('encoder-select', 'opusenc');
   await click('favorite-opus', true);
   await until('window.store.get("favorite").then(value => value?.Audio?.opus === true)', 'favorite saved');
-  // Remove tool discovery inputs temporarily, not the tools themselves. The real
-  // manager/service/UI refresh against an empty PATH; no install/download mocks.
+  // The packaged catalog must not depend on PATH. Only optional opusenc
+  // should disappear from the separate encoder selector when PATH is cleared.
   const pathEntries = Object.entries(process.env).filter(([key]) => key.toLowerCase() === 'path');
   const previousFavorite = await js('window.store.get("favorite")');
+  const beforeTools = await js('window.electronAPI.getInitData()');
   try {
     for (const [key] of pathEntries) delete process.env[key];
     process.env.PATH = '';
     await click('tool-manager-toggle');
     await click('tools-refresh', true);
-    await until(`window.electronAPI.getInitData().then(data => data.outputFormats.Audio.length === 0 && data.toolManagement.tools.every(tool => tool.source === 'missing'))`, 'missing tool discovery');
+    await until(`window.electronAPI.getInitData().then(data => !data.targetEncoders?.opus?.includes('opusenc') && data.toolManagement.tools.find(tool => tool.id === 'opusenc')?.source === 'missing')`, 'only optional PATH encoder disappears');
     await until(`!document.querySelector('${selector('tools-refresh')}').disabled`, 'tool refresh unlocks');
-    await click('format-opus');
-    await until(`Boolean(document.querySelector('${selector('tool-confirm-ffmpeg')}'))`, 'missing format opens installation disclosure');
-    assert.equal(await js(`document.querySelector('${selector('add-files')}').disabled`), true);
-    const disclosure = await js(`document.querySelector('${selector('tool-confirm-ffmpeg')}').textContent`);
-    assert.match(disclosure, /network/i);
-    assert.match(disclosure, /https:/);
-    assert.match(disclosure, /MiB/);
-    await click('tool-dismiss');
-    await until(`!document.querySelector('${selector('tool-confirm-ffmpeg')}')`, 'installation prompt dismissed');
-    const dismissed = await js('window.electronAPI.getInitData()');
-    assert.equal(dismissed.toolManagement.busy, false);
-    assert.ok(dismissed.toolManagement.tools.every(tool => tool.bytes === 0 && tool.source === 'missing' && ['missing','failed'].includes(tool.status)));
+    const afterTools = await js('window.electronAPI.getInitData()');
+    assert.deepEqual(afterTools.outputFormats, beforeTools.outputFormats);
+    assert.deepEqual(afterTools.targetOptions, beforeTools.targetOptions);
+    assert.equal(afterTools.toolManagement.tools.find(tool=>tool.id==='ffmpeg').source, 'bundled');
+    assert.equal(await js(`document.querySelector('${selector('tool-install-ffmpeg')}')`), null);
+    assert.equal(await js(`document.querySelector('${selector('tool-remove-ffmpeg')}')`), null);
     assert.deepEqual(await js('window.store.get("favorite")'), previousFavorite);
   } finally {
     delete process.env.PATH;
@@ -253,9 +253,27 @@ async function exerciseWorkflows({window, dialogState, reveals, temporary, error
   await js(`document.querySelector('[data-testid="task-row"][data-task-id="${remaining.id}"]').click()`);
   await click('task-remove');
   await until('window.electronAPI.getInitData().then(data => data.taskSnapshot.tasks.length === 0)', 'cancelled tasks removed');
+
+  await click('tab-formats');
+  await click('category-video');
+  await click('format-mkv');
+  await until(`Boolean(document.querySelector('${selector('config-width')}'))`, 'MKV Config width');
+  await js(`{ const input=document.querySelector('${selector('config-width')}'); input.value='32'; input.dispatchEvent(new Event('input',{bubbles:true})); }`);
+  dialogState.queue.push({result:{canceled:false,filePaths:[input]}});
+  await click('add-files');
+  await until(`document.querySelector('${selector('task-detail')}')?.dataset.status === 'ready'`, 'configured MKV route');
+  let mediaTask=(await snapshot()).tasks[0];
+  assert.equal(mediaTask.target.options.width,32);
+  assert.deepEqual(mediaTask.plan.steps.map(step=>step.toolId),['ffmpeg']);
+  await click('task-start');
+  await until(`document.querySelector('${selector('task-detail')}')?.dataset.status === 'done'`, 'configured MKV conversion',60000);
+  mediaTask=(await snapshot()).tasks[0];
+  const proof=JSON.parse((await runProcess('ffprobe',['-v','error','-select_streams','v:0','-show_entries','stream=width,height','-of','json',mediaTask.outputPath])).stdout);
+  assert.deepEqual([proof.streams[0].width,proof.streams[0].height],[32,32]);
+  assert.deepEqual(await readFile(input),original);
   assert.equal(dialogState.queue.length, 0);
   assert.deepEqual(errors, []);
-  console.log('Real Electron DOM workflow passed: target/opusenc/favorite/tabs/language, missing-tool disclosure/dismiss/refresh and pending-task management guard, picker result cancellation/error, real FFmpeg→opusenc conversion, reveal boundary/missing-output error, bulk cancellation/removal. OS native dialogs and Explorer were stubbed, not tested.');
+  console.log('Real Electron DOM workflow passed: target/opusenc/favorite/tabs/language, fixed bundled catalog and management guards, picker cancellation/error, real FFmpeg→opusenc conversion, Config-driven one-step MKV with verified dimensions, reveal and bulk cancellation/removal. OS native dialogs and Explorer were stubbed, not tested.');
 }
 
 async function prepareSmoke(app) {
@@ -390,6 +408,8 @@ async function prepareSmoke(app) {
       const persisted = await window.store.get('offlineMode');
       const rejects = await Promise.all([
         expectReject(() => api.addFiles({kind:'video',format:'not-real'})),
+        expectReject(() => api.installTool('ffmpeg')),
+        expectReject(() => api.removeTool('ffmpeg')),
         expectReject(() => api.taskAction('start',['not-a-task'])),
         expectReject(() => api.taskAction('start',[])),
         expectReject(() => api.taskAction('shutdown',['not-a-task'])),
@@ -418,7 +438,7 @@ async function prepareSmoke(app) {
     assert.deepEqual(result.storeKeys, ['get','set']);
     assert.equal(result.requireType, 'undefined');
     assert.equal(result.processType, 'undefined');
-    assert.ok(result.data.outputFormats.Audio.length > 0, 'Install FFmpeg/ffprobe for native smoke');
+    assert.ok(result.data.outputFormats.Audio.length > 0, 'Prepare the release FFmpeg/ffprobe bundle for native smoke');
     assert.ok(result.data.tools.some(tool => tool.id === 'ffmpeg' && tool.available));
     assert.deepEqual(result.data.taskSnapshot, {revision:0,tasks:[]});
     assert.deepEqual(result.after, result.data.taskSnapshot);

@@ -60,6 +60,12 @@
       },
       "certificate": {
         "title": "Certificate"
+      },
+      "image": {
+        "title": "Image"
+      },
+      "subtitle": {
+        "title": "Subtitles"
       }
     },
     "tasks": {
@@ -95,11 +101,10 @@
   },
   "conversion": {
     "targetFirst": "Choose a target, then add your files",
-    "audioScope": "Local video or audio → audio. Video is not retained. Each file gets its own conversion plan.",
-    "chooseTarget": "Choose an audio target on the left. FormatBay will find an available conversion route.",
+    "chooseTarget": "Choose an output format on the left. Available routes depend on your files and installed tools.",
     "importHint": "Folders: first level only, up to 200 files.",
     "unavailable": "Unavailable",
-    "installTools": "Install FFmpeg and ffprobe from their official source, add them to PATH, then restart. Tools are never downloaded automatically.",
+    "installTools": "FFmpeg/ffprobe are included with FormatBay releases. If the bundled copy is missing or damaged, reinstall FormatBay.",
     "route": "Conversion route",
     "output": "Output",
     "besideInput": "Beside the input, with a new name. Never overwrites the original.",
@@ -127,12 +132,13 @@
       "converting": "Converting",
       "verifying": "Verifying output"
     },
-    "revealOutput": "Show in folder"
+    "revealOutput": "Show in folder",
+    "scope": "FormatBay plans each file separately with installed tools. Review its route and warnings before starting."
   },
   "toolManager": {
     "manage": "Manage tools",
-    "requiresTool": "Requires installation",
-    "manual": "Automatic installation supports Windows x64. On other systems, install FFmpeg/ffprobe and optional opusenc on PATH, then refresh. Bundled and PATH tools cannot be removed here.",
+    "requiresTool": "Tool unavailable",
+    "manual": "Optional tools can be managed on Windows x64. Bundled tools and tools on PATH cannot be removed here.",
     "refresh": "Refresh tools",
     "source": "Source",
     "status": "Status",
@@ -146,6 +152,98 @@
     "license": "License",
     "confirm": "Confirm download and install",
     "dismiss": "Dismiss",
-    "maximum": "Up to"
+    "maximum": "Up to",
+    "ffmpegBundled": "FFmpeg/ffprobe are bundled. Their version and supported formats are set by this FormatBay release."
+  },
+  "config": {
+    "title": "Config",
+    "intro": "Settings for files you add next. Existing tasks keep their own settings.",
+    "reset": "Reset to defaults",
+    "automatic": "Automatic",
+    "noOptions": "This format uses automatic settings.",
+    "opusencDefaults": "The optional opusenc route uses its own defaults. Choose Automatic above to set FFmpeg audio options.",
+    "videoCopyOnly": "This release can only copy a compatible source video track into this format. Video encoding and resizing are unavailable.",
+    "videoSubtitleWarning": "This video format does not retain subtitle tracks in FormatBay.",
+    "subtitleHint": "Only text subtitle tracks are supported. When no track is specified, FormatBay picks the first supported track.",
+    "review": "Requested settings",
+    "automaticReview": "Automatic defaults based on the input and target format.",
+    "yes": "Yes",
+    "no": "No",
+    "error": {
+      "range": "Enter a whole number from {min} to {max} that fits the field rules.",
+      "unavailable": "Choose an available option.",
+      "rateConflict": "Set either CRF or video bitrate, not both.",
+      "trackConflict": "The default track must match the only track you selected."
+    },
+    "field": {
+      "codec": {
+        "label": "Audio codec",
+        "hint": "Automatic preserves compatible audio when possible. When you set other audio options, it uses the format’s default codec."
+      },
+      "sampleRate": {
+        "label": "Sample rate (Hz)",
+        "hint": "Available rates depend on the codec. Leave Automatic to use suitable settings from the input."
+      },
+      "bitrateKbps": {
+        "label": "Audio bitrate (kbps)",
+        "hint": "Set a bitrate for lossy audio, or leave Automatic."
+      },
+      "channels": {
+        "label": "Audio channels",
+        "hint": "Select the output channel count, or leave Automatic. A smaller count can downmix the input."
+      },
+      "videoCodec": {
+        "label": "Video codec",
+        "hint": "Choose an available encoder, or leave Automatic to let FormatBay choose a route."
+      },
+      "crf": {
+        "label": "Quality (CRF)",
+        "hint": "0–51. Lower values generally improve quality and increase size. Use CRF or bitrate, not both."
+      },
+      "videoBitrateKbps": {
+        "label": "Video bitrate (kbps)",
+        "hint": "100–50,000 kbps. Use bitrate or CRF, not both."
+      },
+      "frameRate": {
+        "label": "Frame rate (fps)",
+        "hint": "1–120 frames per second. Leave blank to use the source and encoder defaults."
+      },
+      "width": {
+        "label": "Width (pixels)",
+        "hint": "Even number, {min}–{max}. Set one dimension to keep the aspect ratio."
+      },
+      "height": {
+        "label": "Height (pixels)",
+        "hint": "Even number, {min}–{max}. Set one dimension to keep the aspect ratio."
+      },
+      "audioTrack": {
+        "label": "Keep only audio track",
+        "hint": "0 is the first audio track. Leave blank for automatic track selection."
+      },
+      "subtitleTrack": {
+        "label": "Subtitle track",
+        "hint": "0 is the first subtitle track. Set an index to select just that track."
+      },
+      "defaultAudioTrack": {
+        "label": "Default audio track",
+        "hint": "0 is the first audio track in the input. Applies only if retained."
+      },
+      "defaultSubtitleTrack": {
+        "label": "Default subtitle track",
+        "hint": "0 is the first subtitle track in the input. Applies only if retained."
+      },
+      "dropSubtitles": {
+        "label": "Remove all subtitles",
+        "hint": "Discard subtitle tracks instead of keeping compatible ones."
+      },
+      "pixelFormat": {
+        "label": "Pixel format",
+        "hint": "Optional 10-bit HEVC output. Playback needs a compatible decoder."
+      }
+    },
+    "inputTracks": "Input tracks",
+    "inputTracksHint": "Use these zero-based track numbers when configuring a new import.",
+    "defaultTrack": "Default in source",
+    "hevc10Bit": "10-bit YUV 4:2:0 (yuv420p10le)"
   }
 }

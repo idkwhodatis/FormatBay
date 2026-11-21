@@ -1,12 +1,18 @@
 import {acceptsToolSnapshot} from './tool-catalog.js';
 import {applyTaskSnapshot} from './task-snapshot.js';
+import {buildTarget, targetKind} from './target-config.js';
 const store = $state({
   init: false, offlineMode: true, favorite: {}, tasks: {}, taskRevision: -1,
-  selectedFormat: null, selectedEncoder: '', selectedTask: null, outputDirectory: null,
+  selectedFormat: null, selectedEncoder: '', selectedOptions: {}, selectedTask: null, outputDirectory: null,
   tab: 'formats', busy: false, dialogBusy: false, taskActionBusy: false, favoriteSaving: false, error: '', tools: [], toolManagement: {revision: -1, tools: [], busy: false}, toolPanel: false, toolPrompt: null, toolActionBusy: false, toolCancelBusy: false
 });
 export default store;
-export const consts = $state({outputFormats: {}, installableFormats: {}, targetEncoders: {}});
+export const consts = $state({outputFormats: {}, installableFormats: {}, targetEncoders: {}, targetOptions: {}});
+export function resetConfig() { store.selectedEncoder = ''; store.selectedOptions = {}; }
+export function targetSelection() {
+  return buildTarget(store.selectedFormat, store.selectedOptions, store.selectedEncoder,
+    consts.outputFormats, consts.targetOptions, consts.targetEncoders);
+}
 export function updateTools(snapshot) {
   if (acceptsToolSnapshot(store.toolManagement.revision, snapshot)) store.toolManagement = snapshot;
 }
@@ -17,18 +23,20 @@ export function applyInitData(data) {
   consts.outputFormats = data.outputFormats ?? {};
   consts.installableFormats = data.installableFormats ?? {};
   consts.targetEncoders = data.targetEncoders ?? {};
+  consts.targetOptions = data.targetOptions ?? {};
   store.tools = data.tools ?? [];
   store.outputDirectory = data.outputDirectory;
   updateTools(data.toolManagement);
   if (store.selectedFormat && !consts.outputFormats[store.selectedFormat[0]]?.includes(store.selectedFormat[1])) {
-    store.selectedFormat = null; store.selectedEncoder = '';
+    store.selectedFormat = null; resetConfig();
   }
   if (!consts.targetEncoders.opus?.includes(store.selectedEncoder)) store.selectedEncoder = '';
 }
 export function promptTool(id) { store.toolPanel = true; store.toolPrompt = id; }
 export function chooseFormat(type, format) {
-  if (!consts.outputFormats[type]?.includes(format)) { promptTool(format === 'opus' && store.tools.some(tool => tool.id === 'ffmpeg' && tool.available) ? 'opusenc' : 'ffmpeg'); return; }
-  if (store.selectedFormat?.[0] !== type || store.selectedFormat?.[1] !== format) store.selectedEncoder = '';
+  if (store.busy || store.dialogBusy || !targetKind(type)) return;
+  if (!consts.outputFormats[type]?.includes(format)) { promptTool(type === 'Audio' && format === 'opus' && store.tools.some(tool => tool.id === 'ffmpeg' && tool.available) ? 'opusenc' : 'ffmpeg'); return; }
+  if (store.selectedFormat?.[0] !== type || store.selectedFormat?.[1] !== format) resetConfig();
   store.selectedFormat = [type, format]; store.selectedTask = null;
 }
 export async function toolAction(action, id) {
@@ -51,10 +59,9 @@ export function updateTasks(snapshot) {
   } catch (error) { store.error = error.message; }
 }
 export async function addFiles(folder = false) {
-  if (!store.selectedFormat || !consts.outputFormats[store.selectedFormat[0]]?.includes(store.selectedFormat[1]) || store.busy || store.dialogBusy) return;
-  const format = store.selectedFormat[1];
-  const target = {kind: 'audio', format};
-  if (format === 'opus' && store.selectedEncoder) target.encoder = store.selectedEncoder;
+  if (store.busy || store.dialogBusy) return;
+  const {target} = targetSelection();
+  if (!target) return;
   store.busy = true;
   store.error = '';
   try {

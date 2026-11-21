@@ -72,6 +72,13 @@ configure_library libvorbis-1.3.7 --disable-docs --disable-examples
 configure_library lame-3.100 --disable-frontend --disable-decoder --disable-nasm
 configure_library opus-1.6.1 --disable-doc --disable-extra-programs
 (
+ cd "$WORK/src/zlib-1.4"
+ CHOST="$HOST" ./configure --prefix="$PREFIX" --static
+ cp configure.log "$OUT/source/build-logs/zlib-1.4-configure.log"
+ make -j"$JOBS" libz.a
+ make install
+)
+(
  cd "$WORK/src/ffmpeg-9.0.2"
  ./configure --prefix="$PREFIX" --target-os=mingw32 --arch=x86_64 "${FFCROSS[@]}" \
    --cc="$CC" --ar="$AR" --ranlib="$RANLIB" --strip="$STRIP" \
@@ -79,20 +86,20 @@ configure_library opus-1.6.1 --disable-doc --disable-extra-programs
    --disable-shared --enable-static --disable-doc --disable-debug --disable-ffplay \
    --disable-network --disable-hwaccels --disable-pthreads --enable-w32threads \
    --disable-indevs --enable-indev=lavfi --disable-outdevs \
-   --enable-libmp3lame --enable-libvorbis --enable-libopus \
+   --enable-libmp3lame --enable-libvorbis --enable-libopus --enable-zlib \
    --pkg-config=pkg-config --pkg-config-flags=--static --extra-cflags="-I$PREFIX/include" \
    --extra-ldflags="-L$PREFIX/lib -static -static-libgcc"
  cp ffbuild/config.log config.h config_components.h ffbuild/config.mak "$OUT/source/build-logs/"
  for feature in GPL NONFREE VERSION3 NETWORK; do
    grep -q "^#define CONFIG_${feature} 0$" config.h || { echo "Unexpected enabled feature: $feature"; exit 1; }
  done
- for codec in PCM_S16LE FLAC AAC LIBMP3LAME LIBVORBIS LIBOPUS; do
+ for codec in PCM_S16LE FLAC AAC LIBMP3LAME LIBVORBIS LIBOPUS PNG; do
    grep -q "^CONFIG_${codec}_ENCODER=yes$" ffbuild/config.mak || { echo "Missing encoder: $codec"; exit 1; }
  done
  make -j"$JOBS"
  cp ffmpeg.exe ffprobe.exe "$OUT/bin/"
 )
-for folder in ffmpeg-9.0.2 libogg-1.3.6 libvorbis-1.3.7 lame-3.100 opus-1.6.1; do
+for folder in ffmpeg-9.0.2 libogg-1.3.6 libvorbis-1.3.7 lame-3.100 opus-1.6.1 zlib-1.4; do
  mkdir -p "$OUT/licenses/$folder"
  find "$WORK/src/$folder" -maxdepth 1 -type f \( -iname 'COPYING*' -o -iname 'LICENSE*' -o -iname 'AUTHORS*' \) -exec cp {} "$OUT/licenses/$folder/" \;
 done
@@ -120,7 +127,7 @@ fi
 (cd "$OUT"; sha256sum bin/*.exe > SHA256SUMS)
 printf '%s\n' 'FFmpeg 9.0.2, built by FormatBay from the enclosed pinned source archives.' \
  'LGPL configuration: GPL, nonfree, version3-only components and autodetection disabled.' \
- 'External codecs: LAME 3.100 (LGPL), libogg 1.3.6 (BSD), libvorbis 1.3.7 (BSD), Opus 1.6.1 (BSD).' \
+ 'External codecs: LAME 3.100 (LGPL), libogg 1.3.6 (BSD), libvorbis 1.3.7 (BSD), Opus 1.6.1 (BSD); zlib 1.4 (Zlib) enables PNG.' \
  'Source archives, exact recipe, configuration and build environment are in source/.' \
  'This is a source-rebuild recipe, not a claim of bit-for-bit reproducibility across compilers.' \
  'Keep bin/, source/, licenses/ and SHA256SUMS together when redistributing.' > "$OUT/README.txt"
@@ -130,7 +137,7 @@ if [[ -z ${CROSS_PREFIX:-} ]]; then
  "$OUT/bin/ffmpeg.exe" -version > "$OUT/source/build-logs/ffmpeg-version.txt"
  "$OUT/bin/ffprobe.exe" -version > "$OUT/source/build-logs/ffprobe-version.txt"
  "$OUT/bin/ffmpeg.exe" -hide_banner -encoders > "$OUT/source/build-logs/encoders.txt"
- for codec in pcm_s16le flac libmp3lame aac libvorbis libopus; do
+ for codec in pcm_s16le flac libmp3lame aac libvorbis libopus png; do
    grep -Eq "[[:space:]]${codec}[[:space:]]" "$OUT/source/build-logs/encoders.txt" || { echo "Missing encoder: $codec"; exit 1; }
  done
 fi

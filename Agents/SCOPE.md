@@ -1,8 +1,19 @@
 # FormatBay scope
 
+## Expanded FFmpeg support
+
+- A checked-in release contract fixes the audio, video, image and text subtitle
+  format and configuration choices. Packaging checks the exact bundled binaries.
+  Copy-only profiles require compatible source streams and have no encode options.
+- Config captures typed options before import. Non-audio operations run one
+  verified FFmpeg step; automatic audio still uses the tool graph.
+- FFmpeg/ffprobe are bundled only. No system or managed replacement. Network and
+  device conversion, arbitrary filters, image sequences/HLS and unverified GPU
+  encoders remain out of scope. Optional tools can still be installed explicitly.
+
 ## Implemented on conversion-graph branch
 
-- Target-first real audio catalog from installed FFmpeg capabilities.
+- Target-first real audio catalog from the bundled release contract.
 - Pure deterministic capability multigraph planner, quality-first bounded paths,
   offline/tool/input constraints and multi-tool test fixtures.
 - Native bounded file/folder import, actual stream probing and per-file plans.
@@ -17,8 +28,8 @@
 - Node tests including real tiny synthetic media fixtures, production build.
 - Linux GitHub Actions workflow with real media tools, locked installs, skip-free
   integration enforcement, syntax/locale checks and build (no native GUI claim).
-- Windows workflow runs the same suite with checksum-pinned upstream-linked
-  tools plus isolated production Electron smoke; native interactive/visual
+- Windows workflow runs the same suite with the checksum-pinned FFmpeg bundle and optional
+  opusenc plus isolated production Electron smoke; native interactive/visual
   acceptance remains separate from automated launch/IPC checks.
 - Revision-aware task updates and shared UI operation locks.
 
@@ -27,18 +38,18 @@
 - Two production adapters: FFmpeg and optional Xiph opusenc. Real cross-tool
   routing is tested, including automatic fallback when FFmpeg Opus encoding is
   unavailable. FFmpeg remains required for probing/output verification.
-- Audio-only outputs, first audio stream. Video/subtitles/chapters/metadata/artwork
+- Audio-only jobs use the first audio stream. Video/subtitles/chapters/metadata/artwork
   are discarded and disclosed; lossy or precision changes have warnings.
-- Same-format output never detours through an intermediate format. Subtitle and
-  default-track editing are not yet exposed as operations.
-- Tool discovery is at startup; install FFmpeg/ffprobe and optional opus-tools
-  manually and restart. No automated downloads.
+- Same-format output never detours through an intermediate format. Existing
+  MKV subtitles and default tracks can be edited; external subtitle import is not implemented.
+- The required pair must be present in the bundle. Optional tool availability can
+  be refreshed in Tools. No automated downloads.
 - No downloads/network conversions; the offline toggle is retained but all
   implemented adapters are local. Playlist/manifest inputs are rejected.
 - Output directory applies to newly imported tasks. Default is source directory.
   Publication requires hard-link support on that volume and fails safely otherwise.
 - Tasks are session-local, no persistent queue/resume. Retry means remove/re-add.
-- No recursive import, drag-drop, OCR/data/certificate/video output converters,
+- No recursive import, drag-drop, OCR/data/certificate converters,
   multi-output fan-out, global graph viewer, signed installer or updater.
 - Historical catalog/consts and supported.txt remain unused ideas, not support claims.
 
@@ -76,9 +87,9 @@ Explorer boundaries remain stubbed in automation. No signed release is claimed.
 ## Managed tools and bundled FFmpeg (2026-11-18)
 
 Windows x64 packages include our pinned-source FFmpeg/ffprobe build with matching
-source/notices. Tools UI supports explicit pinned FFmpeg/opusenc installation,
-progress, cancellation, discovery refresh and recoverable managed removal. Missing
-formats remain visible to open installation information, not to claim availability.
+source/notices. Tools UI supports explicit pinned opusenc installation, progress,
+cancellation, discovery refresh and recoverable managed removal. Bundled FFmpeg
+is shown for status only and cannot be replaced.
 Linux/macOS managed downloads, automatic updates, installers/signing and GPU
 encoding remain outside implemented scope. Earlier external-only preview notes
 are superseded by this section; see BUNDLED-FFMPEG.md for provenance and limits.

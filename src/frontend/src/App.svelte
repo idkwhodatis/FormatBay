@@ -8,8 +8,10 @@
   import Topbar from '$lib/components/Topbar.svelte';
   import Formats from '$lib/views/Formats.svelte';
   import Tasks from '$lib/views/Tasks.svelte';
-  import store, {consts, updateTasks, updateTools, applyInitData, promptTool, addFiles} from '$lib/store.svelte.js';
+  import store, {updateTasks, updateTools, applyInitData, promptTool, addFiles, targetSelection} from '$lib/store.svelte.js';
   import ToolManager from '$lib/components/ToolManager.svelte';
+  import ConversionConfig from '$lib/components/ConversionConfig.svelte';
+  import ConfigSummary from '$lib/components/ConfigSummary.svelte';
   let bootError = $state('');
   let revealing = $state(false);
   async function revealOutput(id) {
@@ -20,6 +22,7 @@
     finally { revealing = false; }
   }
   let selected = $derived(store.tasks[store.selectedTask]);
+  let selection = $derived(targetSelection());
   onMount(() => {
     let disposed = false;
     const unsubscribeTools = window.electronAPI?.onTools?.(updateTools);
@@ -47,8 +50,8 @@
     <div class="flex flex-1 min-h-0">
       <aside class="w-2/5 max-w-lg border-r flex flex-col min-h-0">
         <div class="p-3 border-b flex flex-wrap gap-2">
-          <Button data-testid="add-files" disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
-          <Button data-testid="add-folder" variant="outline" disabled={!store.selectedFormat || store.busy || store.dialogBusy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
+          <Button data-testid="add-files" disabled={!selection.target || store.busy || store.dialogBusy} onclick={() => addFiles()}>{$_('left.tasks.add.tooltip')}</Button>
+          <Button data-testid="add-folder" variant="outline" disabled={!selection.target || store.busy || store.dialogBusy} onclick={() => addFiles(true)}>{$_('left.tasks.addfolder.tooltip')}</Button>
           <p class="text-xs text-muted-foreground w-full">{$_('conversion.importHint')}</p>
         </div>
         <Tabs.Root bind:value={store.tab} class="flex-1 min-h-0">
@@ -64,17 +67,7 @@
         <header>
           <p class="text-sm text-muted-foreground">{$_('conversion.targetFirst')}</p>
           <h1 class="text-2xl font-semibold mt-1">{store.selectedFormat ? `.${store.selectedFormat[1]}` : $_('right.hintformat')}</h1>
-          <p class="mt-2 text-sm text-muted-foreground">{$_('conversion.audioScope')}</p>
-          {#if store.selectedFormat?.[1] === 'opus' && consts.targetEncoders?.opus?.includes('opusenc')}
-            <label class="flex items-center gap-2 mt-3 text-sm">
-              {$_('conversion.encoder')}
-              <select data-testid="encoder-select" bind:value={store.selectedEncoder} disabled={store.busy} class="border rounded p-2">
-                <option value="">{$_('conversion.autoEncoder')}</option>
-                <option value="opusenc">{$_('conversion.opusencEncoder')}</option>
-              </select>
-            </label>
-            <p class="mt-1 text-xs text-muted-foreground">{$_('conversion.encoderHint')}</p>
-          {/if}
+          <p class="mt-2 text-sm text-muted-foreground">{$_('conversion.scope')}</p>
         </header>
         {#each store.tools.filter(tool => !tool.available && !tool.optional) as tool}
           <div role="status" class="p-4 border rounded-lg bg-amber-50 text-amber-950">
@@ -82,7 +75,10 @@
             <p class="text-sm mt-2">{$_('conversion.installTools')}</p>
           </div>
         {/each}
-        {#if store.selectedFormat?.[1] === 'opus'}
+        {#if store.selectedFormat}
+          <ConversionConfig {selection}/>
+        {/if}
+        {#if store.selectedFormat?.[0] === 'Audio' && store.selectedFormat?.[1] === 'opus'}
           {#each store.tools.filter(tool => !tool.available && tool.optional) as tool}
             <p class="text-xs text-muted-foreground">{tool.id}: {$_('conversion.optionalTool')}</p>
             <Button variant="outline" onclick={() => promptTool(tool.id)}>{$_('toolManager.manage')}</Button>
@@ -93,7 +89,7 @@
             <div class="flex justify-between gap-3"><h2 class="font-semibold break-all">{selected.inputPath.split(/[\\/]/).pop()}</h2><span>{$_(`conversion.status.${selected.status}`)}</span></div>
             <p class="text-xs text-muted-foreground break-all">{selected.inputPath}</p>
             <h3 class="font-medium">{$_('conversion.route')} → .{selected.target.format}</h3>
-            {#if selected.target.format === 'opus'}<p class="text-sm text-muted-foreground">{$_('conversion.encoder')}: {selected.target.encoder ?? $_('conversion.autoEncoder')}</p>{/if}
+            <ConfigSummary target={selected.target} plan={selected.plan}/>
             {#if selected.plan}
               <ol class="space-y-3">
                 {#each selected.plan.steps as step, i}

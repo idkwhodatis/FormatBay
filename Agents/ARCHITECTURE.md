@@ -18,11 +18,16 @@ files per dialog/500 tasks, folders are non-recursive.
   availability/offline policy filters them. Quality cost precedes step count.
   Same-kind, same-format requests only consider direct one-step capabilities.
   Route steps snapshot capability ID, tool/version, input/output and warnings.
-- `conversion/ffmpeg.js`: discovers FFmpeg/ffprobe and actual encoders, decoders,
-  muxers. Supported output targets are WAV/FLAC/MP3/AAC/OGG/Opus when available.
-  Probes local regular media files; excludes playlist/network protocols. Copies
-  matching audio codecs where possible, otherwise encodes the first audio stream.
+- `conversion/ffmpeg.js`: checks bundled FFmpeg/ffprobe and uses the release encoders, decoders,
+  muxers. Probes local regular media files; excludes playlist/network protocols.
+  Copies matching audio codecs where possible, otherwise encodes the first audio
+  stream. Configured audio options are part of the captured route; they require
+  an FFmpeg encode edge, not a silent copy or an optional external encoder.
   Explicit warnings cover removed streams/metadata, lossy encoding and precision.
+- `conversion/ffmpeg-media.js`: reviewed single-file video, still image and text
+  subtitle profiles fixed by the bundled release contract. Plans are
+  one operation with verified outputs and typed options; Config cannot supply
+  raw arguments, protocols, executable paths or filters.
 - `conversion/process.js`: argv-only spawn, no shell; cancellation, timeout and
   bounded diagnostics. Actual conversion progress is parsed from FFmpeg.
 - `conversion/service.js`: backend-owned tasks and serial queue. Imports probe and
@@ -43,7 +48,8 @@ target, plan, status, progress and output/error. Renderer ignores revisions alre
 applied, preventing late init/action replies from reverting newer pushed state.
 
 Renderer keeps target selection independent from task target. Choose a target,
-add files, inspect route/warnings, then start. Tasks toolbar provides individual
+adjust its Config options, add files, inspect route/warnings, then start. Tasks
+capture their own options at import. Tasks toolbar provides individual
 and batch start/cancel, with removal of nonrunning tasks. No fake tasks. Favorites,
 language choice and offline preference remain. Tools missing on PATH are shown
 explicitly. All implemented routes are local, regardless of offline switch.
@@ -54,7 +60,7 @@ The graph supports A→F→L in unit tests and real FFmpeg → FLAC → opusenc
 execution. Automatic prefers equivalent direct paths; an Opus encoder preference
 can require opusenc as the final tool. Optional opusenc requires local Xiph
 opus-tools and FFmpeg probing/full-decode verification, not automatic installation.
-No OCR/data/video output adapter, automatic installer, signing
+No OCR/data adapter, HLS or image sequence output, arbitrary FFmpeg CLI, signing
 pipeline, durable queue/resume, drag-drop, recursive import or topology visualizer.
 
 Encoding preserves channel count unless a declared encoder limit requires a

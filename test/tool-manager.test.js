@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,readFile,rm,readdir,symlink,mkdir} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,rm,readdir,symlink,mkdir,realpath} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {EventEmitter} from 'node:events';
 import {Readable} from 'node:stream';
@@ -8,6 +8,7 @@ import yauzl from 'yauzl';
 import path from 'node:path';
 import os from 'node:os';
 import {ToolManager} from '../src/backend/conversion/tool-manager.js';
+import {TOOL_MANIFESTS} from '../src/backend/conversion/tool-manifests.js';
 import {downloadVerified,extractSelected,validateDownloadURL,safeArchiveName} from '../src/backend/conversion/tool-download.js';
 import {zipFixture} from './helpers/zip-fixture.js';
 const digest=body=>createHash('sha256').update(body).digest('hex');
@@ -108,4 +109,92 @@ test('adapter discovery failure is surfaced for a managed tool while allowing ex
   assert.equal(tool.canRemove,true);assert.equal(tool.canInstall,false);
   await manager.remove('test');assert.equal(manager.snapshot().tools[0].canInstall,true);
  }finally{await manager.shutdown();await rm(root,{recursive:true,force:true});}
+});
+
+const ffmpegManifest=TOOL_MANIFESTS.ffmpeg;
+const ffmpegName=command=>command+(process.platform==='win32'?'.exe':'');
+async function fixtureFFmpeg(directory,source,{commands=ffmpegManifest.commands,version=ffmpegManifest.version}={}){
+ await mkdir(directory,{recursive:true});
+ const files={};
+ for(const command of commands){
+  const name=ffmpegName(command),content=source+' '+command;
+  await writeFile(path.join(directory,name),content,{mode:0o700});
+  files[name]=digest(content);
+ }
+ await writeFile(path.join(directory,'install.json'),JSON.stringify({id:'ffmpeg',version,files}));
+}
+
+test('FFmpeg activates only the fixed bundled pair; optional PATH tools remain independent',async()=>{
+ const base=await temporary();
+ try{
+  const root=path.join(base,'managed'),bundledRoot=path.join(base,'resources');
+  const managed=path.join(root,'ffmpeg',ffmpegManifest.version),bundled=path.join(bundledRoot,'ffmpeg');
+  const system=path.join(base,'system');
+  for(const [directory,source] of [[managed,'managed'],[bundled,'bundled'],[system,'system']])await fixtureFFmpeg(directory,source);
+  const resolved=[],downloads=[];
+  const resolver=async command=>{resolved.push(command);return command==='tool'?path.join(system,command):realpath(path.join(system,ffmpegName(command)));};
+  const manager=new ToolManager({root,bundledRoot,resolver,manifests:{ffmpeg:ffmpegManifest,test:manifest},download:async()=>downloads.push(true)});
+  const snapshot=await manager.refresh(),ffmpeg=snapshot.tools[0];
+  assert.equal(ffmpeg.source,'bundled');assert.equal(ffmpeg.status,'available');
+  assert.equal(ffmpeg.version,'9.0.2-formatbay-lgpl');assert.equal(ffmpeg.installedVersion,ffmpeg.version);
+  assert.equal(ffmpeg.canInstall,false);assert.equal(ffmpeg.canRemove,false);assert.equal(ffmpeg.canUpdate,false);
+  assert.equal(ffmpeg.downloadURL,null);assert.equal(ffmpeg.licenseURL,null);assert.match(ffmpeg.license,/LGPL/);
+  assert.equal(Object.hasOwn(ffmpeg,'preference'),false);assert.equal(Object.hasOwn(ffmpeg,'canSelectSystem'),false);
+  assert.equal(manager.setFFmpegPreference,undefined);
+  assert.deepEqual(manager.commands(),{
+   ffmpeg:await realpath(path.join(bundled,ffmpegName('ffmpeg'))),
+   ffprobe:await realpath(path.join(bundled,ffmpegName('ffprobe'))),
+   tool:path.join(system,'tool')
+  });
+  assert.deepEqual(resolved,['tool']);
+  assert.equal(snapshot.tools[1].source,'path');
+  await assert.rejects(manager.install('ffmpeg'),/fixed bundled tools/);
+  await assert.rejects(manager.remove('ffmpeg'),/fixed bundled tools/);
+  assert.throws(()=>manager.cancel('ffmpeg'),/fixed bundled tools/);
+  assert.deepEqual(downloads,[]);
+  assert.equal(await readFile(path.join(managed,ffmpegName('ffmpeg')),'utf8'),'managed ffmpeg');
+  assert.equal(await readFile(path.join(system,ffmpegName('ffmpeg')),'utf8'),'system ffmpeg');
+ }finally{await rm(base,{recursive:true,force:true});}
+});
+
+test('an absent, partial, tampered or wrong-version bundle is unavailable without fallback',async()=>{
+ const base=await temporary();
+ try{
+  const root=path.join(base,'managed'),bundledRoot=path.join(base,'resources'),bundled=path.join(bundledRoot,'ffmpeg');
+  await fixtureFFmpeg(path.join(root,'ffmpeg',ffmpegManifest.version),'managed');
+  const resolved=[];
+  const manager=new ToolManager({root,bundledRoot,manifests:{ffmpeg:ffmpegManifest},resolver:async command=>{
+   resolved.push(command);return path.join(base,ffmpegName(command));
+  }});
+  const checkMissing=async()=>{
+   const status=(await manager.refresh()).tools[0];
+   assert.equal(status.source,'missing');assert.equal(status.status,'missing');assert.match(status.error,/Bundled FFmpeg/);
+   assert.equal(status.canInstall,false);assert.equal(status.canRemove,false);assert.deepEqual(manager.commands(),{});
+  };
+  await checkMissing();
+  await fixtureFFmpeg(bundled,'bundled',{commands:['ffmpeg']});await checkMissing();
+  await fixtureFFmpeg(bundled,'bundled',{version:'8.0.0'});await checkMissing();
+  await fixtureFFmpeg(bundled,'bundled');await manager.refresh();
+  assert.equal(manager.snapshot().tools[0].source,'bundled');
+  await writeFile(path.join(bundled,ffmpegName('ffprobe')),'changed');await checkMissing();
+  assert.deepEqual(resolved,[]);
+  manager.applyDiscovery([{id:'ffmpeg',available:false,detail:'No command'}]);
+  assert.match(manager.snapshot().tools[0].error,/Bundled FFmpeg/);
+ }finally{await rm(base,{recursive:true,force:true});}
+});
+
+test('a linked bundle or binary is not a trusted fixed FFmpeg pair',async()=>{
+ const base=await temporary();
+ try{
+  const root=path.join(base,'managed'),actual=path.join(base,'actual'),bundledRoot=path.join(base,'resources');
+  await fixtureFFmpeg(path.join(actual,'ffmpeg'),'bundled');await symlink(actual,bundledRoot,process.platform==='win32'?'junction':'dir');
+  const manager=new ToolManager({root,bundledRoot,manifests:{ffmpeg:ffmpegManifest},resolver:missing});
+  assert.equal((await manager.refresh()).tools[0].source,'missing');
+  assert.deepEqual(manager.commands(),{});
+  if(process.platform==='win32')return; // A directory junction does not require Windows symlink privilege.
+  await rm(bundledRoot);const bundled=path.join(bundledRoot,'ffmpeg');
+  await fixtureFFmpeg(bundled,'bundled');
+  await rm(path.join(bundled,'ffprobe'));await symlink(path.join(actual,'ffmpeg','ffprobe'),path.join(bundled,'ffprobe'));
+  assert.equal((await manager.refresh()).tools[0].source,'missing');assert.deepEqual(manager.commands(),{});
+ }finally{await rm(base,{recursive:true,force:true});}
 });

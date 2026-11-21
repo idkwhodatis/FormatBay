@@ -5,6 +5,7 @@ import {app, BrowserWindow, ipcMain, dialog, shell} from 'electron';
 import Store from 'electron-store';
 import {ConversionService} from './backend/conversion/service.js';
 import {FFmpegAdapter} from './backend/conversion/ffmpeg.js';
+import {BUNDLED_FFMPEG_CONTRACT} from './backend/conversion/bundled-ffmpeg-contract.js';
 import {OpusencAdapter} from './backend/conversion/opusenc.js';
 import {ToolManager} from './backend/conversion/tool-manager.js';
 import {revealTaskOutput} from './backend/conversion/output.js';
@@ -22,7 +23,7 @@ let outputDirectory = null;
 let catalog;
 let manager;
 let toolOperation = false;
-const installableFormats = {Audio: ['wav','flac','mp3','aac','ogg','opus']};
+const installableFormats = {};
 const initData = () => ({...catalog, installableFormats, toolManagement: manager.snapshot(), taskSnapshot: service.snapshot(), outputDirectory});
 function noToolOperation() { if (toolOperation) throw new Error('Wait for tool management to finish'); }
 function canManageTools() {
@@ -34,8 +35,11 @@ function canManageTools() {
 async function rediscoverTools() {
   await manager.refresh();
   const commands = manager.commands();
-  service.adapters = [new FFmpegAdapter({ffmpeg:commands.ffmpeg ?? 'ffmpeg', ffprobe:commands.ffprobe ?? 'ffprobe'}), new OpusencAdapter({command:commands.opusenc ?? 'opusenc'})];
+  // Only use the manager's resolved pair; never fall back to independent bare
+  // PATH lookups that could pair FFmpeg with a different ffprobe installation.
+  service.adapters = [new FFmpegAdapter({ffmpeg:commands.ffmpeg ?? '', ffprobe:commands.ffprobe ?? '', bundleContract:BUNDLED_FFMPEG_CONTRACT}), new OpusencAdapter({command:commands.opusenc ?? ''})];
   service.adapter = service.adapters[0];
+  service.media = undefined;
   catalog = await service.initialize();
   manager.applyDiscovery(catalog.tools);
 }
@@ -59,11 +63,13 @@ async function withDialog(fn) {
 }
 
 app.whenReady().then(async () => {
-  manager = new ToolManager({root:path.join(app.getPath('userData'),'tools'),bundledRoot:app.isPackaged ? path.join(process.resourcesPath,'tools') : undefined,onChange:snapshot=>{
+  const settings = new Store();
+  const bundledRoot = app.isPackaged ? path.join(process.resourcesPath,'tools')
+    : process.env.FORMATBAY_DEV_BUNDLED_TOOLS || path.join(app.getAppPath(),'.cache','bundled-tools');
+  manager = new ToolManager({root:path.join(app.getPath('userData'),'tools'),bundledRoot,onChange:snapshot=>{
     if(win && !win.isDestroyed())win.webContents.send('tools:state',snapshot);
   }});
   await rediscoverTools();
-  const settings = new Store();
   await migrateLegacySettings(settings, path.join(app.getAppPath(), 'config.json'), catalog.outputFormats);
   const settingKeys = new Set(['favorite', 'offlineMode']);
   handle('app:initData', initData);
@@ -75,7 +81,9 @@ app.whenReady().then(async () => {
     if (!settingKeys.has(key)) throw new Error('Unsupported setting');
     return settings.get(key);
   });
-  handle('store:set', (key, value) => settings.set(key, validateSetting(key, value, installableFormats)));
+  handle('store:set', (key, value) => {
+    return settings.set(key, validateSetting(key, value, catalog.outputFormats));
+  });
   handle('conversion:add', (target, folder = false) => {
     noToolOperation();
     const validatedTarget = validateTarget(target, catalog.outputFormats, catalog.targetEncoders);

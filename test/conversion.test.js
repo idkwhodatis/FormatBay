@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {ConversionService,publish} from '../src/backend/conversion/service.js';
 import {FFmpegAdapter} from '../src/backend/conversion/ffmpeg.js';
+import {planConversion} from '../src/backend/conversion/planner.js';
 import {runProcess} from '../src/backend/conversion/process.js';
 // Windows temp paths may contain short-name aliases; service probes canonical paths.
 const temp=async()=>realpath(await mkdtemp(path.join(os.tmpdir(),'formatbay-test-')));
@@ -222,5 +223,7 @@ test('verification rejects error-level diagnostics even if a tool exits successf
 test('conversion rejects error-level diagnostics even with a successful tool exit',async()=>{
  const adapter=new FFmpegAdapter({runner:async()=>({stdout:'',stderr:'Error reading a damaged packet'})});
  adapter.available=true;adapter.encoders=new Set(['pcm_s16le']);adapter.decoders=new Set(['pcm_s16le']);adapter.muxers=new Set(['wav']);
- await assert.rejects(adapter.execute({capabilityId:'ffmpeg:copy:wav',output:{format:'wav'}},path.join(os.tmpdir(),'input.wav'),path.join(os.tmpdir(),'output.wav')),/conversion errors/);
+ const input={kind:'audio',format:'wav',hasAudio:true,audioCodec:'pcm_s16le',audioChannels:1,audioLayout:'mono'};
+ const step=planConversion(input,{kind:'audio',format:'wav'},adapter.capabilities()).steps[0];
+ await assert.rejects(adapter.execute(step,path.join(os.tmpdir(),'input.wav'),path.join(os.tmpdir(),'output.wav')),/conversion errors/);
 });

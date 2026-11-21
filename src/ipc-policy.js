@@ -5,12 +5,35 @@ export function assertTrustedSender(event, win, allowedURL, quitting = false) {
     throw new Error(`Untrusted IPC sender (closing=${quitting}, window=${!!win}, sender=${event.sender === win?.webContents}, mainFrame=${event.senderFrame === win?.webContents.mainFrame}, document=${event.senderFrame?.url === allowedURL})`);
   }
 }
+const categories = {audio: 'Audio', video: 'Video', image: 'Image', subtitle: 'Subtitle'};
+const integer = (min, max) => value => Number.isInteger(value) && value >= min && value <= max;
+const codec = value => typeof value === 'string' && /^[a-z0-9_]{1,32}$/.test(value);
+const track = integer(0, 63);
+const dimension = value => integer(16, 4096)(value) && value % 2 === 0;
+const fields = {
+  audio: {codec, bitrateKbps: integer(8, 640), sampleRate: integer(8000, 192000), channels: integer(1,2)},
+  video: {videoCodec: codec, pixelFormat:value=>value==='yuv420p10le', crf: integer(0,51), videoBitrateKbps: integer(100, 50000), frameRate: integer(1,120),
+    width:dimension, height:dimension, audioTrack:track, subtitleTrack:track, defaultAudioTrack:track, defaultSubtitleTrack:track, dropSubtitles:value=>typeof value==='boolean'},
+  image: {width:dimension, height:dimension},
+  subtitle: {subtitleTrack:track},
+};
 export function validateTarget(target, outputFormats, targetEncoders = {}) {
-  if (!target || target.kind !== 'audio' || typeof target.format !== 'string' ||
-      !outputFormats.Audio?.includes(target.format)) throw new Error('Unsupported target');
-  const clean = {kind: 'audio', format: target.format};
+  if (!target || typeof target.kind !== 'string' || !Object.hasOwn(categories, target.kind) || typeof target.format !== 'string' ||
+      !/^[a-z0-9]{1,12}$/.test(target.format) ||
+      !outputFormats[categories[target.kind]]?.includes(target.format)) throw new Error('Unsupported target or unavailable tool');
+  const clean = {kind: target.kind, format: target.format};
+  if (target.options !== undefined) {
+    if (!target.options || Array.isArray(target.options) || typeof target.options !== 'object') throw new Error('Invalid conversion options');
+    const schema = fields[target.kind], options = {};
+    for (const key of Object.keys(target.options)) {
+      if (!Object.hasOwn(schema,key) || !schema[key](target.options[key])) throw new Error('Unsupported conversion option or value');
+      options[key] = target.options[key];
+    }
+    if (Object.keys(options).length) clean.options = options;
+  }
   if (target.encoder !== undefined) {
-    if (target.format !== 'opus' || target.encoder !== 'opusenc' ||
+    if (target.kind !== 'audio' || target.options && Object.keys(target.options).length ||
+        target.format !== 'opus' || target.encoder !== 'opusenc' ||
         !targetEncoders.opus?.includes('opusenc')) throw new Error('Unsupported or unavailable encoder');
     clean.encoder = 'opusenc';
   }

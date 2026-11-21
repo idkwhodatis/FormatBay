@@ -60,7 +60,7 @@ jobs:
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: '1.4.5'
-      - name: Install pinned media tools from upstream-linked distributions
+      - name: Install pinned optional opusenc test tool
         run: ./scripts/install-windows-tools.ps1
       - name: Download same-run source-complete FFmpeg build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -94,6 +94,9 @@ jobs:
           if (-not (Select-String -Path test-results.tap -Pattern '^# skipped 0$' -Quiet)) {
             throw 'Integration tests must not be skipped'
           }
+      - name: Produce and verify every fixed output with the bundled FFmpeg
+        timeout-minutes: 6
+        run: node scripts/bundled-ffmpeg-smoke.mjs
       - name: Build production renderer
         run: |
           bun run build

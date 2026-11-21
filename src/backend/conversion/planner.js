@@ -56,7 +56,7 @@ export function planConversion(input, target, capabilities, {offline = true, max
       best.set(searchKey,loss);
       const warnings = edge.warnings?.(current.state) ?? [];
       queue.push({state:output,loss,
-        steps:[...current.steps,{capabilityId:edge.id,toolId:edge.toolId,toolVersion:edge.toolVersion??null,verifyInput:edge.verifyInput===true,label:edge.label,input:current.state,output}],
+        steps:[...current.steps,{capabilityId:edge.id,toolId:edge.toolId,toolVersion:edge.toolVersion??null,verifyInput:edge.verifyInput===true,label:edge.label,input:current.state,output,...(edge.options?{options:edge.options}:{})}],
         warnings:[...current.warnings,...warnings],visited:new Set([...current.visited,key])});
     }
   }

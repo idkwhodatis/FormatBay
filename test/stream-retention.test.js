@@ -15,7 +15,7 @@ test('real conversion explicitly drops source tags, chapters, subtitles and extr
  try {
   const catalog=await service.initialize();
   if(!catalog.outputFormats.Audio?.length||!catalog.targetEncoders.opus?.includes('opusenc'))return t.skip('FFmpeg/ffprobe and opusenc required');
-  assert.deepEqual([...catalog.outputFormats.Audio].sort(),['aac','flac','mp3','ogg','opus','wav']);
+  for(const format of ['aac','flac','mp3','ogg','opus','wav'])assert.ok(catalog.outputFormats.Audio.includes(format));
   const subtitles=path.join(dir,'subtitle.srt'),metadata=path.join(dir,'metadata.txt'),input=path.join(dir,'two-tracks.mkv');
   await writeFile(subtitles,'1\n00:00:00,000 --> 00:00:00,400\nSubtitle content\n');
   await writeFile(metadata,`;FFMETADATA1\ntitle=${marker}\nartist=${marker}\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=400\ntitle=${marker}\n`);

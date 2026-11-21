@@ -60,6 +60,12 @@
       },
       "certificate": {
         "title": "证书"
+      },
+      "image": {
+        "title": "图片"
+      },
+      "subtitle": {
+        "title": "字幕"
       }
     },
     "tasks": {
@@ -95,11 +101,10 @@
   },
   "conversion": {
     "targetFirst": "先选目标格式，再添加文件",
-    "audioScope": "当前支持本地视频或音频 → 音频。视频画面不会保留；每个文件会单独分析转换路线。",
-    "chooseTarget": "选择左侧音频目标格式，系统会自动查找可用的转换路线。",
+    "chooseTarget": "从左侧选择输出格式。可用路线取决于输入文件和已安装的工具。",
     "importHint": "文件夹只导入第一层文件，最多 200 个。",
     "unavailable": "工具不可用",
-    "installTools": "请从官方来源安装 FFmpeg 和 ffprobe 并加入 PATH，然后重启。不会自动下载工具。",
+    "installTools": "FormatBay 发布包内置 FFmpeg/ffprobe。如果内置工具缺失或损坏，请重新安装 FormatBay。",
     "route": "转换路线",
     "output": "输出位置",
     "besideInput": "原文件旁边，使用新的文件名，绝不覆盖原文件。",
@@ -127,12 +132,13 @@
       "converting": "正在转换",
       "verifying": "正在验证输出"
     },
-    "revealOutput": "在文件夹中显示"
+    "revealOutput": "在文件夹中显示",
+    "scope": "FormatBay 会用已安装的工具为每个文件单独规划路线。开始前可以查看路线和提示。"
   },
   "toolManager": {
     "manage": "管理工具",
-    "requiresTool": "需要安装工具",
-    "manual": "自动安装支持 Windows x64。其他系统请将 FFmpeg/ffprobe 和可选的 opusenc 安装到 PATH，然后刷新。内置及 PATH 工具无法在此移除。",
+    "requiresTool": "工具不可用",
+    "manual": "Windows x64 支持管理可选工具。内置工具和 PATH 中的工具无法在此移除。",
     "refresh": "刷新工具",
     "source": "来源",
     "status": "状态",
@@ -146,6 +152,98 @@
     "license": "许可证",
     "confirm": "确认下载并安装",
     "dismiss": "关闭",
-    "maximum": "最多"
+    "maximum": "最多",
+    "ffmpegBundled": "FFmpeg/ffprobe 随 FormatBay 一起发布，版本和支持格式由当前发布版本决定。"
+  },
+  "config": {
+    "title": "转换配置",
+    "intro": "只用于接下来添加的文件。现有任务保留自己的配置。",
+    "reset": "恢复默认",
+    "automatic": "自动",
+    "noOptions": "此格式使用自动配置。",
+    "opusencDefaults": "可选的 opusenc 路线使用自己的默认配置。如需设定 FFmpeg 音频参数，请在上方选择「自动选择」。",
+    "videoCopyOnly": "当前版本只能将兼容的源视频轨原样封装到此格式，不支持重新编码或调整尺寸。",
+    "videoSubtitleWarning": "FormatBay 转换到此视频格式时不会保留字幕轨道。",
+    "subtitleHint": "仅支持文本字幕。未指定轨道时，FormatBay 会选择第一条支持的字幕轨道。",
+    "review": "任务配置",
+    "automaticReview": "根据输入和目标格式自动配置。",
+    "yes": "是",
+    "no": "否",
+    "error": {
+      "range": "请输入 {min} 至 {max} 范围内且符合要求的整数。",
+      "unavailable": "请选择可用选项。",
+      "rateConflict": "CRF 和视频码率只能设置一项。",
+      "trackConflict": "只保留一条轨道时，默认轨道必须与其相同。"
+    },
+    "field": {
+      "codec": {
+        "label": "音频编码",
+        "hint": "自动模式尽可能保留兼容的音频。设置其他音频参数时，会使用该格式的默认编码。"
+      },
+      "sampleRate": {
+        "label": "采样率（Hz）",
+        "hint": "可用采样率取决于编码。选择「自动」则根据输入选用合适的参数。"
+      },
+      "bitrateKbps": {
+        "label": "音频码率（kbps）",
+        "hint": "为有损音频指定码率，或选择「自动」。"
+      },
+      "channels": {
+        "label": "声道数",
+        "hint": "指定输出声道数，或选择「自动」。减少声道数可能会将音频混合到较少的声道。"
+      },
+      "videoCodec": {
+        "label": "视频编码",
+        "hint": "选择可用编码器，或让 FormatBay 自动规划路线。"
+      },
+      "crf": {
+        "label": "画质（CRF）",
+        "hint": "0–51。数值越低，通常画质越好、文件越大。CRF 和码率只能设置一项。"
+      },
+      "videoBitrateKbps": {
+        "label": "视频码率（kbps）",
+        "hint": "100–50,000 kbps。码率和 CRF 只能设置一项。"
+      },
+      "frameRate": {
+        "label": "帧率（fps）",
+        "hint": "每秒 1–120 帧。留空则根据输入和编码器自动选择。"
+      },
+      "width": {
+        "label": "宽度（像素）",
+        "hint": "输入 {min} 至 {max} 之间的偶数。只设置一边可保持宽高比。"
+      },
+      "height": {
+        "label": "高度（像素）",
+        "hint": "输入 {min} 至 {max} 之间的偶数。只设置一边可保持宽高比。"
+      },
+      "audioTrack": {
+        "label": "仅保留此音轨",
+        "hint": "0 表示第一条音轨。留空则由 FormatBay 自动选择轨道。"
+      },
+      "subtitleTrack": {
+        "label": "字幕轨道",
+        "hint": "0 表示第一条字幕轨道。填写序号后只选取该轨道。"
+      },
+      "defaultAudioTrack": {
+        "label": "默认音轨",
+        "hint": "0 表示输入中的第一条音轨。仅对保留的轨道生效。"
+      },
+      "defaultSubtitleTrack": {
+        "label": "默认字幕轨道",
+        "hint": "0 表示输入中的第一条字幕轨道。仅对保留的轨道生效。"
+      },
+      "dropSubtitles": {
+        "label": "删除所有字幕",
+        "hint": "不保留字幕，即使目标格式支持。"
+      },
+      "pixelFormat": {
+        "label": "像素格式",
+        "hint": "可选择 10-bit HEVC 输出，播放时需要兼容的解码器。"
+      }
+    },
+    "inputTracks": "输入轨道",
+    "inputTracksHint": "添加新文件前，可在转换配置中使用此处从 0 开始的轨道序号。",
+    "defaultTrack": "源文件默认轨道",
+    "hevc10Bit": "10-bit YUV 4:2:0（yuv420p10le）"
   }
 }

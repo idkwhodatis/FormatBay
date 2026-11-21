@@ -43,6 +43,23 @@ test('target strips extra renderer authority and rejects unsupported formats', (
   for(const target of [null,{}, {kind:'video',format:'wav'}, {kind:'audio',format:'mp3'}])
     assert.throws(() => validateTarget(target, {Audio:['wav']}));
 });
+test('media config accepts bounded typed settings without granting path or command authority', () => {
+  const outputs={Video:['mkv'], Image:['png'], Subtitle:['srt'], Audio:['flac','opus']};
+  assert.deepEqual(validateTarget({kind:'video',format:'mkv',options:{defaultAudioTrack:1,dropSubtitles:false}},outputs),
+    {kind:'video',format:'mkv',options:{defaultAudioTrack:1,dropSubtitles:false}});
+  assert.deepEqual(validateTarget({kind:'audio',format:'flac',options:{sampleRate:48000,channels:1}},outputs),
+    {kind:'audio',format:'flac',options:{sampleRate:48000,channels:1}});
+  for (const target of [
+    {kind:['audio'],format:'flac'},
+    {kind:'video',format:'mkv',options:{videoCodec:'-f concat'}},
+    {kind:'video',format:'mkv',options:{defaultAudioTrack:'1'}},
+    {kind:'video',format:'mkv',options:{args:['-i','https://host/file']}},
+    {kind:'video',format:'mkv',options:{subtitlePath:'/etc/passwd'}},
+    {kind:'image',format:'png',options:{width:9e30}},
+    {kind:'audio',format:'flac',options:{channels:12}},
+    {kind:'audio',format:'opus',encoder:'opusenc',options:{sampleRate:48000}},
+  ]) assert.throws(()=>validateTarget(target,outputs,{opus:['opusenc']}));
+});
 test('settings are allowlisted and favorite values normalized to catalog booleans', () => {
   assert.equal(validateSetting('offlineMode', false, {}), false);
   assert.throws(() => validateSetting('offlineMode', 'false', {}));
